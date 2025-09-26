@@ -17,6 +17,17 @@ A high-performance Dart package for HTTP range requests, enabling efficient file
 - 🏗️ **Isolate-based I/O** - Non-blocking file operations using Dart isolates
 - 🧹 **Temporary file cleanup** - Manual cleanup utility for incomplete downloads
 
+## Limitations and Advantages
+
+### Limitations
+- **No background downloads on mobile**: Since this package doesn't use native device features, downloads cannot continue when the app is in the background on mobile platforms. Downloads will pause when the app is backgrounded and can be resumed when the app returns to the foreground.
+
+### Advantages
+- **Cross-platform consistency**: Pure Dart implementation ensures identical behavior across iOS, Android, Web, and Desktop platforms with high-performance parallel downloads when servers support range requests
+- **Minimal footprint**: Depends only on `http` and `crypto` packages, keeping your app size small and reducing dependency vulnerabilities
+- **Zero configuration**: No native setup, platform-specific code, or complex configuration required - works out of the box on all platforms including Flutter Web
+- **Maintenance-friendly**: No platform-specific bugs or OS update compatibility issues to worry about - one codebase for all platforms
+
 ## Installation
 
 ```bash
