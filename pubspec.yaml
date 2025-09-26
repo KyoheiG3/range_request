@@ -1,0 +1,18 @@
+name: range_request
+description: A Dart package for efficient HTTP range requests supporting parallel chunked downloads, resume capability, and checksum verification.
+version: 0.0.1
+homepage: https://github.com/KyoheiG3/range_request
+repository: https://github.com/KyoheiG3/range_request
+documentation: https://github.com/KyoheiG3/range_request
+issue_tracker: https://github.com/KyoheiG3/range_request/issues
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  crypto: ^3.0.0
+  http: ^1.1.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.3
