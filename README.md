@@ -1,7 +1,7 @@
 # Range Request
 
 [![pub package](https://img.shields.io/pub/v/range_request.svg)](https://pub.dev/packages/range_request)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 A high-performance Dart package for HTTP range requests, enabling efficient file downloads with support for parallel chunked downloads, automatic resume capability, and checksum verification.
 
@@ -17,13 +17,28 @@ A high-performance Dart package for HTTP range requests, enabling efficient file
 - 🏗️ **Isolate-based I/O** - Non-blocking file operations using Dart isolates
 - 🧹 **Temporary file cleanup** - Manual cleanup utility for incomplete downloads
 
+## Limitations and Advantages
+
+### Limitations
+- **No background downloads on mobile**: Since this package doesn't use native device features, downloads cannot continue when the app is in the background on mobile platforms. Downloads will pause when the app is backgrounded and can be resumed when the app returns to the foreground.
+
+### Advantages
+- **Cross-platform consistency**: Pure Dart implementation ensures identical behavior across iOS, Android, Web, and Desktop platforms with high-performance parallel downloads when servers support range requests
+- **Minimal footprint**: Depends only on `http` and `crypto` packages, keeping your app size small and reducing dependency vulnerabilities
+- **Zero configuration**: No native setup, platform-specific code, or complex configuration required - works out of the box on all platforms including Flutter Web
+- **Maintenance-friendly**: No platform-specific bugs or OS update compatibility issues to worry about - one codebase for all platforms
+
 ## Installation
 
-Add this to your package's `pubspec.yaml` file:
+```bash
+dart pub add range_request
+```
+
+Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  range_request: ^0.0.1
+  range_request:
 ```
 
 Then run:
@@ -268,4 +283,4 @@ try {
 
 ## License
 
-[MIT License](LICENSE)
+[BSD 3-Clause License](LICENSE)
