@@ -157,6 +157,8 @@ class RangeRequestClient {
     CancelToken? cancelToken,
     void Function(int bytes, int total)? onProgress,
   }) async* {
+    cancelToken?.throwIfCancelled();
+
     var receivedBytes = startBytes;
 
     // Check server info if not provided
