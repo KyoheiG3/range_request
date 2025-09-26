@@ -90,7 +90,7 @@ class FileDownloader {
 
     // FileMode.write truncates any existing file, FileMode.append preserves existing content for resume
     final raf = await file.open(
-      mode: resume ? FileMode.append : FileMode.write,
+      mode: (resume && info.acceptRanges) ? FileMode.append : FileMode.write,
     );
 
     // Helper to notify completion with status
