@@ -1,7 +1,7 @@
 # Range Request
 
 [![pub package](https://img.shields.io/pub/v/range_request.svg)](https://pub.dev/packages/range_request)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 A high-performance Dart package for HTTP range requests, enabling efficient file downloads with support for parallel chunked downloads, automatic resume capability, and checksum verification.
 
@@ -19,11 +19,15 @@ A high-performance Dart package for HTTP range requests, enabling efficient file
 
 ## Installation
 
-Add this to your package's `pubspec.yaml` file:
+```bash
+dart pub add range_request
+```
+
+Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  range_request: ^0.0.1
+  range_request:
 ```
 
 Then run:
@@ -268,4 +272,4 @@ try {
 
 ## License
 
-[MIT License](LICENSE)
+[BSD 3-Clause License](LICENSE)
