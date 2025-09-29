@@ -28,10 +28,16 @@ void main() {
       server.listen((request) async {
         if (request.method == 'HEAD') {
           request.response.statusCode = 200;
-          request.response.headers.set('content-length', testBytes.length.toString());
+          request.response.headers.set(
+            'content-length',
+            testBytes.length.toString(),
+          );
           request.response.headers.set('accept-ranges', 'bytes');
           if (fileName != null) {
-            request.response.headers.set('content-disposition', 'attachment; filename="$fileName"');
+            request.response.headers.set(
+              'content-disposition',
+              'attachment; filename="$fileName"',
+            );
           }
         } else if (request.method == 'GET') {
           final rangeHeader = request.headers['range']?.first;
@@ -39,8 +45,8 @@ void main() {
             final rangeParts = rangeHeader.substring(6).split('-');
             final start = int.parse(rangeParts[0]);
             final end = rangeParts[1].isEmpty
-              ? testBytes.length - 1
-              : int.parse(rangeParts[1]);
+                ? testBytes.length - 1
+                : int.parse(rangeParts[1]);
             request.response.statusCode = 206;
             request.response.add(testBytes.sublist(start, end + 1));
           } else {
@@ -56,7 +62,10 @@ void main() {
       server.listen((request) async {
         if (request.method == 'HEAD') {
           request.response.statusCode = 200;
-          request.response.headers.set('content-length', testBytes.length.toString());
+          request.response.headers.set(
+            'content-length',
+            testBytes.length.toString(),
+          );
           request.response.headers.set('accept-ranges', 'none');
         } else if (request.method == 'GET') {
           request.response.statusCode = 200;
@@ -88,7 +97,10 @@ void main() {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set('content-length', '1000');
-              request.response.headers.set('content-disposition', 'attachment; filename="my file.txt"');
+              request.response.headers.set(
+                'content-disposition',
+                'attachment; filename="my file.txt"',
+              );
             }
             await request.response.close();
           });
@@ -107,7 +119,10 @@ void main() {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set('content-length', '1000');
-              request.response.headers.set('content-disposition', 'attachment; filename=document.pdf');
+              request.response.headers.set(
+                'content-disposition',
+                'attachment; filename=document.pdf',
+              );
             }
             await request.response.close();
           });
@@ -172,9 +187,15 @@ void main() {
           final client = RangeRequestClient();
           expect(
             () => client.checkServerInfo(serverUrl),
-            throwsA(isA<RangeRequestException>()
-              .having((e) => e.code, 'code', RangeRequestErrorCode.serverError)
-              .having((e) => e.message, 'message', contains('404'))),
+            throwsA(
+              isA<RangeRequestException>()
+                  .having(
+                    (e) => e.code,
+                    'code',
+                    RangeRequestErrorCode.serverError,
+                  )
+                  .having((e) => e.message, 'message', contains('404')),
+            ),
           );
         });
 
@@ -192,9 +213,19 @@ void main() {
           final client = RangeRequestClient();
           expect(
             () => client.checkServerInfo(serverUrl),
-            throwsA(isA<RangeRequestException>()
-              .having((e) => e.code, 'code', RangeRequestErrorCode.invalidResponse)
-              .having((e) => e.message, 'message', contains('Content-Length'))),
+            throwsA(
+              isA<RangeRequestException>()
+                  .having(
+                    (e) => e.code,
+                    'code',
+                    RangeRequestErrorCode.invalidResponse,
+                  )
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    contains('Content-Length'),
+                  ),
+            ),
           );
         });
 
@@ -237,7 +268,6 @@ void main() {
           // Then: Should receive complete data
           expect(receivedData, equals(testBytes));
         });
-
       });
 
       group('when resuming from specific position', () {
@@ -246,7 +276,10 @@ void main() {
           server.listen((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
-              request.response.headers.set('content-length', testBytes.length.toString());
+              request.response.headers.set(
+                'content-length',
+                testBytes.length.toString(),
+              );
               request.response.headers.set('accept-ranges', 'bytes');
             } else if (request.method == 'GET') {
               final rangeHeader = request.headers['range']?.first;
@@ -254,15 +287,21 @@ void main() {
                 final rangeParts = rangeHeader.substring(6).split('-');
                 final start = int.parse(rangeParts[0]);
                 final end = rangeParts[1].isEmpty
-                  ? testBytes.length - 1
-                  : int.parse(rangeParts[1]);
+                    ? testBytes.length - 1
+                    : int.parse(rangeParts[1]);
 
                 // Verify resume position
                 expect(start, greaterThanOrEqualTo(10));
 
                 request.response.statusCode = 206;
-                request.response.headers.set('content-range', 'bytes $start-$end/${testBytes.length}');
-                request.response.headers.set('content-length', '${end - start + 1}');
+                request.response.headers.set(
+                  'content-range',
+                  'bytes $start-$end/${testBytes.length}',
+                );
+                request.response.headers.set(
+                  'content-length',
+                  '${end - start + 1}',
+                );
                 request.response.add(testBytes.sublist(start, end + 1));
               }
             }
@@ -274,10 +313,7 @@ void main() {
           final client = RangeRequestClient(config: config);
 
           final receivedData = <int>[];
-          await for (final chunk in client.fetch(
-            serverUrl,
-            startBytes: 10,
-          )) {
+          await for (final chunk in client.fetch(serverUrl, startBytes: 10)) {
             receivedData.addAll(chunk);
           }
 
@@ -304,7 +340,6 @@ void main() {
           // Then: Should still receive complete data
           expect(receivedData, equals(testBytes));
         });
-
       });
 
       group('with retry behavior', () {
@@ -314,7 +349,10 @@ void main() {
           server.listen((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
-              request.response.headers.set('content-length', testBytes.length.toString());
+              request.response.headers.set(
+                'content-length',
+                testBytes.length.toString(),
+              );
               request.response.headers.set('accept-ranges', 'none');
             } else if (request.method == 'GET') {
               requestCount++;
@@ -331,10 +369,7 @@ void main() {
           });
 
           // When: Fetching with retry configuration
-          const config = RangeRequestConfig(
-            maxRetries: 3,
-            retryDelayMs: 10,
-          );
+          const config = RangeRequestConfig(maxRetries: 3, retryDelayMs: 10);
           final client = RangeRequestClient(config: config);
 
           final receivedData = <int>[];
@@ -388,7 +423,10 @@ void main() {
           server.listen((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
-              request.response.headers.set('content-length', testBytes.length.toString());
+              request.response.headers.set(
+                'content-length',
+                testBytes.length.toString(),
+              );
               request.response.headers.set('accept-ranges', 'bytes');
             } else if (request.method == 'GET') {
               final rangeHeader = request.headers['range']?.first;
@@ -397,12 +435,18 @@ void main() {
                 final rangeParts = rangeHeader.substring(6).split('-');
                 final start = int.parse(rangeParts[0]);
                 final end = rangeParts[1].isEmpty
-                  ? testBytes.length - 1
-                  : int.parse(rangeParts[1]);
+                    ? testBytes.length - 1
+                    : int.parse(rangeParts[1]);
 
                 request.response.statusCode = 206;
-                request.response.headers.set('content-range', 'bytes $start-$end/${testBytes.length}');
-                request.response.headers.set('content-length', '${end - start + 1}');
+                request.response.headers.set(
+                  'content-range',
+                  'bytes $start-$end/${testBytes.length}',
+                );
+                request.response.headers.set(
+                  'content-length',
+                  '${end - start + 1}',
+                );
 
                 // Send requested range in small chunks with delays
                 for (var i = start; i <= end; i += 5) {
@@ -509,8 +553,13 @@ void main() {
                 // Keep fetching
               }
             },
-            throwsA(isA<RangeRequestException>()
-              .having((e) => e.code, 'code', RangeRequestErrorCode.cancelled)),
+            throwsA(
+              isA<RangeRequestException>().having(
+                (e) => e.code,
+                'code',
+                RangeRequestErrorCode.cancelled,
+              ),
+            ),
           );
         });
 
@@ -530,8 +579,13 @@ void main() {
                 // Should not execute
               }
             },
-            throwsA(isA<RangeRequestException>()
-              .having((e) => e.code, 'code', RangeRequestErrorCode.cancelled)),
+            throwsA(
+              isA<RangeRequestException>().having(
+                (e) => e.code,
+                'code',
+                RangeRequestErrorCode.cancelled,
+              ),
+            ),
           );
         });
       });
@@ -547,7 +601,10 @@ void main() {
               request.response.add(testBytes);
             } else if (request.method == 'HEAD') {
               request.response.statusCode = 200;
-              request.response.headers.set('content-length', testBytes.length.toString());
+              request.response.headers.set(
+                'content-length',
+                testBytes.length.toString(),
+              );
             }
             await request.response.close();
           });
@@ -583,10 +640,7 @@ void main() {
           });
 
           // When/Then: Should throw after retries exhausted
-          const config = RangeRequestConfig(
-            maxRetries: 2,
-            retryDelayMs: 10,
-          );
+          const config = RangeRequestConfig(maxRetries: 2, retryDelayMs: 10);
           final client = RangeRequestClient(config: config);
 
           expect(
@@ -595,8 +649,13 @@ void main() {
                 // Try to fetch
               }
             },
-            throwsA(isA<RangeRequestException>()
-              .having((e) => e.code, 'code', RangeRequestErrorCode.serverError)),
+            throwsA(
+              isA<RangeRequestException>().having(
+                (e) => e.code,
+                'code',
+                RangeRequestErrorCode.serverError,
+              ),
+            ),
           );
         });
       });

@@ -13,7 +13,8 @@ void main() {
     late HttpServer server;
     late Uri serverUrl;
     late Directory tempDir;
-    const testData = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz';
+    const testData =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz';
     final testBytes = utf8.encode(testData);
     final testSha256 = sha256.convert(testBytes).toString();
     final testMd5 = md5.convert(testBytes).toString();
@@ -43,24 +44,32 @@ void main() {
           request.response.statusCode = statusCode;
           if (statusCode == 200) {
             final data = customData ?? testBytes;
-            request.response.headers.set('content-length', data.length.toString());
+            request.response.headers.set(
+              'content-length',
+              data.length.toString(),
+            );
             if (supportRanges) {
               request.response.headers.set('accept-ranges', 'bytes');
             }
             if (fileName != null) {
-              request.response.headers.set('content-disposition', 'attachment; filename="$fileName"');
+              request.response.headers.set(
+                'content-disposition',
+                'attachment; filename="$fileName"',
+              );
             }
           }
         } else if (request.method == 'GET') {
           final data = customData ?? testBytes;
           final rangeHeader = request.headers['range']?.first;
 
-          if (rangeHeader != null && rangeHeader.startsWith('bytes=') && supportRanges) {
+          if (rangeHeader != null &&
+              rangeHeader.startsWith('bytes=') &&
+              supportRanges) {
             final rangeParts = rangeHeader.substring(6).split('-');
             final start = int.parse(rangeParts[0]);
             final end = rangeParts[1].isEmpty
-              ? data.length - 1
-              : int.parse(rangeParts[1]);
+                ? data.length - 1
+                : int.parse(rangeParts[1]);
 
             request.response.statusCode = 206;
             request.response.add(data.sublist(start, end + 1));
@@ -258,8 +267,16 @@ void main() {
           );
 
           // Then: Progress should be reported correctly
-          expect(progressReports.any((r) => r.$3 == DownloadStatus.downloading), isTrue);
-          expect(progressReports.any((r) => r.$3 == DownloadStatus.calculatingChecksum), isTrue);
+          expect(
+            progressReports.any((r) => r.$3 == DownloadStatus.downloading),
+            isTrue,
+          );
+          expect(
+            progressReports.any(
+              (r) => r.$3 == DownloadStatus.calculatingChecksum,
+            ),
+            isTrue,
+          );
           expect(progressReports.last.$1, equals(testBytes.length));
         });
       });
@@ -267,7 +284,9 @@ void main() {
       group('cancellation', () {
         test('should handle download cancellation', () async {
           // Given: A server with large file and a cancel token
-          setupServer(customData: List.filled(1000, 65)); // Large file with 'A's
+          setupServer(
+            customData: List.filled(1000, 65),
+          ); // Large file with 'A's
           final cancelToken = CancelToken();
 
           // When: Cancelling download after short delay
@@ -285,8 +304,13 @@ void main() {
               tempDir.path,
               cancelToken: cancelToken,
             ),
-            throwsA(isA<RangeRequestException>()
-              .having((e) => e.code, 'code', RangeRequestErrorCode.cancelled)),
+            throwsA(
+              isA<RangeRequestException>().having(
+                (e) => e.code,
+                'code',
+                RangeRequestErrorCode.cancelled,
+              ),
+            ),
           );
         });
       });
@@ -346,9 +370,19 @@ void main() {
               tempDir.path,
               conflictStrategy: FileConflictStrategy.error,
             ),
-            throwsA(isA<RangeRequestException>()
-              .having((e) => e.code, 'code', RangeRequestErrorCode.fileError)
-              .having((e) => e.message, 'message', contains('already exists'))),
+            throwsA(
+              isA<RangeRequestException>()
+                  .having(
+                    (e) => e.code,
+                    'code',
+                    RangeRequestErrorCode.fileError,
+                  )
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    contains('already exists'),
+                  ),
+            ),
           );
         });
       });
@@ -370,9 +404,19 @@ void main() {
               tempDir.path,
               resume: true,
             ),
-            throwsA(isA<RangeRequestException>()
-              .having((e) => e.code, 'code', RangeRequestErrorCode.fileError)
-              .having((e) => e.message, 'message', contains('exceeds remote'))),
+            throwsA(
+              isA<RangeRequestException>()
+                  .having(
+                    (e) => e.code,
+                    'code',
+                    RangeRequestErrorCode.fileError,
+                  )
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    contains('exceeds remote'),
+                  ),
+            ),
           );
         });
 
@@ -483,7 +527,9 @@ void main() {
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
           await File('${tempDir.path}/file1.tmp').writeAsString('data1');
           await File('${tempDir.path}/file2.tmp').writeAsString('data2');
-          await File('${tempDir.path}/subdir/file3.tmp').create(recursive: true);
+          await File(
+            '${tempDir.path}/subdir/file3.tmp',
+          ).create(recursive: true);
           await File('${tempDir.path}/keep.txt').writeAsString('keep');
 
           // When: Cleaning up temp files
@@ -493,7 +539,10 @@ void main() {
           expect(deleted, equals(3));
           expect(File('${tempDir.path}/file1.tmp').existsSync(), isFalse);
           expect(File('${tempDir.path}/file2.tmp').existsSync(), isFalse);
-          expect(File('${tempDir.path}/subdir/file3.tmp').existsSync(), isFalse);
+          expect(
+            File('${tempDir.path}/subdir/file3.tmp').existsSync(),
+            isFalse,
+          );
           expect(File('${tempDir.path}/keep.txt').existsSync(), isTrue);
         });
 
@@ -576,10 +625,7 @@ void main() {
     group('factory constructor', () {
       test('should create FileDownloader with config', () {
         // Given: A custom configuration
-        const config = RangeRequestConfig(
-          chunkSize: 1024,
-          maxRetries: 5,
-        );
+        const config = RangeRequestConfig(chunkSize: 1024, maxRetries: 5);
 
         // When: Creating FileDownloader with config
         final downloader = FileDownloader.fromConfig(config);
@@ -598,10 +644,7 @@ void main() {
 
         // When: Downloading empty file
         final downloader = FileDownloader.fromConfig(RangeRequestConfig());
-        final result = await downloader.downloadToFile(
-          serverUrl,
-          tempDir.path,
-        );
+        final result = await downloader.downloadToFile(serverUrl, tempDir.path);
 
         // Then: Should handle empty file correctly
         expect(result.fileSize, equals(0));
@@ -617,10 +660,7 @@ void main() {
         final downloader = FileDownloader.fromConfig(
           RangeRequestConfig(chunkSize: 1), // 1 byte chunks
         );
-        final result = await downloader.downloadToFile(
-          serverUrl,
-          tempDir.path,
-        );
+        final result = await downloader.downloadToFile(serverUrl, tempDir.path);
 
         // Then: Should still download correctly
         final file = File(result.filePath);
@@ -653,10 +693,7 @@ void main() {
 
         // When: Downloading to nested directory
         final downloader = FileDownloader.fromConfig(RangeRequestConfig());
-        final result = await downloader.downloadToFile(
-          serverUrl,
-          nestedPath,
-        );
+        final result = await downloader.downloadToFile(serverUrl, nestedPath);
 
         // Then: Directories should be created
         expect(result.filePath, startsWith(nestedPath));

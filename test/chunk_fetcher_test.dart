@@ -160,7 +160,10 @@ void main() {
 
           // Then: Should have single range covering entire file
           expect(fetcher.ranges.length, equals(1));
-          expect(fetcher.ranges[0], equals((start: 0, end: testBytes.length - 1)));
+          expect(
+            fetcher.ranges[0],
+            equals((start: 0, end: testBytes.length - 1)),
+          );
         });
 
         test('should handle very small chunks', () {
@@ -319,7 +322,9 @@ void main() {
           // Given: Server that fails first 2 attempts
           var requestCount = 0;
           final errorServer = await HttpServer.bind('localhost', 0);
-          final errorUrl = Uri.parse('http://localhost:${errorServer.port}/test');
+          final errorUrl = Uri.parse(
+            'http://localhost:${errorServer.port}/test',
+          );
 
           errorServer.listen((request) async {
             requestCount++;
@@ -359,7 +364,9 @@ void main() {
         test('should fail after max retries exceeded', () async {
           // Given: Server that always returns 500
           final errorServer = await HttpServer.bind('localhost', 0);
-          final errorUrl = Uri.parse('http://localhost:${errorServer.port}/test');
+          final errorUrl = Uri.parse(
+            'http://localhost:${errorServer.port}/test',
+          );
 
           errorServer.listen((request) async {
             request.response.statusCode = 500;
@@ -383,11 +390,13 @@ void main() {
           // Then: Should throw after exhausting retries
           await expectLater(
             fetcher.processNextCompletion(),
-            throwsA(isA<RangeRequestException>().having(
-              (e) => e.code,
-              'code',
-              RangeRequestErrorCode.invalidResponse,
-            )),
+            throwsA(
+              isA<RangeRequestException>().having(
+                (e) => e.code,
+                'code',
+                RangeRequestErrorCode.invalidResponse,
+              ),
+            ),
           );
 
           await errorServer.close();
@@ -398,7 +407,9 @@ void main() {
         test('should reject non-206 status for range requests', () async {
           // Given: Server returning 200 instead of 206
           final invalidServer = await HttpServer.bind('localhost', 0);
-          final invalidUrl = Uri.parse('http://localhost:${invalidServer.port}/test');
+          final invalidUrl = Uri.parse(
+            'http://localhost:${invalidServer.port}/test',
+          );
 
           invalidServer.listen((request) async {
             // Return 200 instead of expected 206
@@ -408,10 +419,7 @@ void main() {
           });
 
           // When: Attempting range request
-          const config = RangeRequestConfig(
-            chunkSize: 10,
-            maxRetries: 0,
-          );
+          const config = RangeRequestConfig(chunkSize: 10, maxRetries: 0);
           final fetcher = ChunkFetcher(
             url: invalidUrl,
             contentLength: testBytes.length,
@@ -423,11 +431,13 @@ void main() {
           // Then: Should throw invalid response exception
           await expectLater(
             fetcher.processNextCompletion(),
-            throwsA(isA<RangeRequestException>().having(
-              (e) => e.message,
-              'message',
-              contains('Expected 206 Partial Content'),
-            )),
+            throwsA(
+              isA<RangeRequestException>().having(
+                (e) => e.message,
+                'message',
+                contains('Expected 206 Partial Content'),
+              ),
+            ),
           );
 
           await invalidServer.close();
@@ -496,11 +506,13 @@ void main() {
         // Then: Should throw cancelled exception
         expect(
           () => fetcher.processNextCompletion(),
-          throwsA(isA<RangeRequestException>().having(
-            (e) => e.code,
-            'code',
-            RangeRequestErrorCode.cancelled,
-          )),
+          throwsA(
+            isA<RangeRequestException>().having(
+              (e) => e.code,
+              'code',
+              RangeRequestErrorCode.cancelled,
+            ),
+          ),
         );
       });
 
@@ -521,11 +533,13 @@ void main() {
         // Then: Should throw immediately
         expect(
           () => fetcher.startInitialFetches(),
-          throwsA(isA<RangeRequestException>().having(
-            (e) => e.code,
-            'code',
-            RangeRequestErrorCode.cancelled,
-          )),
+          throwsA(
+            isA<RangeRequestException>().having(
+              (e) => e.code,
+              'code',
+              RangeRequestErrorCode.cancelled,
+            ),
+          ),
         );
       });
     });
@@ -580,19 +594,16 @@ void main() {
         await fetcher.startInitialFetches();
 
         // Then: Should complete without errors
-        expect(
-          () async {
-            while (fetcher.hasMore) {
-              if (fetcher.hasActive) {
-                await fetcher.processNextCompletion();
-              }
-              await for (final _ in fetcher.yieldReadyChunks()) {
-                // Drain stream
-              }
+        expect(() async {
+          while (fetcher.hasMore) {
+            if (fetcher.hasActive) {
+              await fetcher.processNextCompletion();
             }
-          },
-          returnsNormally,
-        );
+            await for (final _ in fetcher.yieldReadyChunks()) {
+              // Drain stream
+            }
+          }
+        }, returnsNormally);
       });
     });
   });

@@ -102,7 +102,8 @@ class RangeRequestConfig {
   }) {
     return RangeRequestConfig(
       chunkSize: chunkSize ?? this.chunkSize,
-      maxConcurrentRequests: maxConcurrentRequests ?? this.maxConcurrentRequests,
+      maxConcurrentRequests:
+          maxConcurrentRequests ?? this.maxConcurrentRequests,
       headers: headers ?? this.headers,
       maxRetries: maxRetries ?? this.maxRetries,
       retryDelayMs: retryDelayMs ?? this.retryDelayMs,

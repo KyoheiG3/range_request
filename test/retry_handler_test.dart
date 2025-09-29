@@ -184,27 +184,30 @@ void main() {
     });
 
     group('edge cases', () {
-      test('should handle large retry counts without performance issues', () async {
-        // Given: A retry handler with many retries allowed
-        final handler = RetryHandler(maxRetries: 10, initialDelayMs: 1);
+      test(
+        'should handle large retry counts without performance issues',
+        () async {
+          // Given: A retry handler with many retries allowed
+          final handler = RetryHandler(maxRetries: 10, initialDelayMs: 1);
 
-        // Then: Initial state should allow retry
-        expect(handler.shouldRetry, isTrue);
-
-        // When: Many retries occur
-        for (var i = 0; i < 10; i++) {
-          final result = await handler.handleError();
-          // Then: Each retry should be allowed
-          expect(result, isTrue);
+          // Then: Initial state should allow retry
           expect(handler.shouldRetry, isTrue);
-        }
 
-        // When: One more retry beyond max
-        final finalResult = await handler.handleError();
-        // Then: Should not allow retry
-        expect(finalResult, isFalse);
-        expect(handler.shouldRetry, isFalse);
-      });
+          // When: Many retries occur
+          for (var i = 0; i < 10; i++) {
+            final result = await handler.handleError();
+            // Then: Each retry should be allowed
+            expect(result, isTrue);
+            expect(handler.shouldRetry, isTrue);
+          }
+
+          // When: One more retry beyond max
+          final finalResult = await handler.handleError();
+          // Then: Should not allow retry
+          expect(finalResult, isFalse);
+          expect(handler.shouldRetry, isFalse);
+        },
+      );
     });
   });
 }
