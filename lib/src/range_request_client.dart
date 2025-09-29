@@ -1,18 +1,27 @@
 import 'dart:async';
 
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 
 import 'cancel_token.dart';
+import 'cancel_token_group.dart';
 import 'chunk_fetcher.dart';
 import 'exceptions.dart';
+import 'http.dart';
 import 'models.dart';
 import 'retry_handler.dart';
 
 /// Client for performing HTTP range requests
 class RangeRequestClient {
   final RangeRequestConfig config;
+  final _cancelTokenGroup = CancelTokenGroup();
 
-  const RangeRequestClient({this.config = const RangeRequestConfig()});
+  /// Factory for creating HTTP clients
+  final Http http;
+
+  RangeRequestClient({
+    this.config = const RangeRequestConfig(),
+    this.http = const DefaultHttp(),
+  });
 
   /// Check if server supports range requests and get content length
   Future<ServerInfo> checkServerInfo(Uri url) async {
@@ -65,7 +74,7 @@ class RangeRequestClient {
   /// Fetch content as a stream without range requests
   Stream<List<int>> _serialFetch(
     Uri url, {
-    CancelToken? cancelToken,
+    required CancelToken cancelToken,
     void Function(int bytes)? onProgress,
   }) async* {
     // Simple retry for streaming downloads (when range requests are not supported) - retry the entire download on failure
@@ -75,13 +84,14 @@ class RangeRequestClient {
     );
 
     while (retryHandler.shouldRetry) {
-      cancelToken?.throwIfCancelled();
+      cancelToken.throwIfCancelled();
 
-      final request = http.Request('GET', url);
+      final request = Request('GET', url);
       request.headers.addAll(config.headers);
 
-      final client = http.Client();
-      cancelToken?.registerClient(client);
+      // Create client using factory
+      final client = http.createClient();
+      cancelToken.registerClient(client);
 
       try {
         final response = await client
@@ -102,14 +112,11 @@ class RangeRequestClient {
 
         break; // Success, exit retry loop
       } catch (e) {
-        // If cancelled, don't retry
-        cancelToken?.throwIfCancelled();
-
         if (!await retryHandler.handleError()) {
           rethrow;
         }
       } finally {
-        cancelToken?.unregisterClient();
+        cancelToken.unregisterClient();
         client.close();
       }
     }
@@ -120,7 +127,7 @@ class RangeRequestClient {
     Uri url,
     int contentLength, {
     int startBytes = 0,
-    CancelToken? cancelToken,
+    required CancelToken cancelToken,
     void Function(int bytes)? onProgress,
   }) async* {
     final chunks = ChunkFetcher(
@@ -130,12 +137,13 @@ class RangeRequestClient {
       startOffset: startBytes,
       cancelToken: cancelToken,
       onProgress: onProgress,
+      http: http,
     );
 
     await chunks.startInitialFetches();
 
     while (chunks.hasMore) {
-      cancelToken?.throwIfCancelled();
+      cancelToken.throwIfCancelled();
 
       // Wait for and process next completed chunk
       if (chunks.hasActive) {
@@ -156,7 +164,11 @@ class RangeRequestClient {
     CancelToken? cancelToken,
     void Function(int bytes, int total)? onProgress,
   }) async* {
-    cancelToken?.throwIfCancelled();
+    // Use provided token or create internal token for cancelAll functionality
+    final effectiveToken = cancelToken ?? CancelToken();
+
+    // Register token with the group
+    _cancelTokenGroup.addToken(effectiveToken);
 
     var receivedBytes = startBytes;
 
@@ -189,12 +201,12 @@ class RangeRequestClient {
               url,
               info.contentLength,
               startBytes: startBytes,
-              cancelToken: cancelToken,
+              cancelToken: effectiveToken,
               onProgress: updateProgress,
             )
           : _serialFetch(
               url,
-              cancelToken: cancelToken,
+              cancelToken: effectiveToken,
               onProgress: updateProgress,
             );
 
@@ -207,5 +219,15 @@ class RangeRequestClient {
     } finally {
       progressTimer?.cancel();
     }
+  }
+
+  /// Cancel all active operations managed by this client
+  void cancelAll() {
+    _cancelTokenGroup.cancelAll();
+  }
+
+  /// Clear all tokens from the group without cancelling them
+  void clearTokens() {
+    _cancelTokenGroup.clear();
   }
 }

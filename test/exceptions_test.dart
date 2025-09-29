@@ -10,10 +10,7 @@ void main() {
         const message = 'Network connection failed';
 
         // When: Exception is created
-        const exception = RangeRequestException(
-          code: code,
-          message: message,
-        );
+        const exception = RangeRequestException(code: code, message: message);
 
         // Then: Properties should match
         expect(exception.code, equals(code));
@@ -35,7 +32,9 @@ void main() {
         // Then: Should format correctly with code name
         expect(
           result,
-          equals('RangeRequestException [serverError]: Server returned an error'),
+          equals(
+            'RangeRequestException [serverError]: Server returned an error',
+          ),
         );
       });
 
@@ -103,10 +102,19 @@ void main() {
         // Then: Should return the correct string representation
         expect(RangeRequestErrorCode.networkError.name, equals('networkError'));
         expect(RangeRequestErrorCode.serverError.name, equals('serverError'));
-        expect(RangeRequestErrorCode.invalidResponse.name, equals('invalidResponse'));
+        expect(
+          RangeRequestErrorCode.invalidResponse.name,
+          equals('invalidResponse'),
+        );
         expect(RangeRequestErrorCode.fileError.name, equals('fileError'));
-        expect(RangeRequestErrorCode.checksumMismatch.name, equals('checksumMismatch'));
-        expect(RangeRequestErrorCode.unsupportedOperation.name, equals('unsupportedOperation'));
+        expect(
+          RangeRequestErrorCode.checksumMismatch.name,
+          equals('checksumMismatch'),
+        );
+        expect(
+          RangeRequestErrorCode.unsupportedOperation.name,
+          equals('unsupportedOperation'),
+        );
         expect(RangeRequestErrorCode.cancelled.name, equals('cancelled'));
       });
     });

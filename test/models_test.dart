@@ -10,11 +10,10 @@ void main() {
 
       // Then: Should have exactly 3 types
       expect(values.length, equals(3));
-      expect(values, containsAll([
-        ChecksumType.sha256,
-        ChecksumType.md5,
-        ChecksumType.none,
-      ]));
+      expect(
+        values,
+        containsAll([ChecksumType.sha256, ChecksumType.md5, ChecksumType.none]),
+      );
     });
   });
 
@@ -26,10 +25,13 @@ void main() {
 
       // Then: Should have exactly 2 statuses
       expect(values.length, equals(2));
-      expect(values, containsAll([
-        DownloadStatus.downloading,
-        DownloadStatus.calculatingChecksum,
-      ]));
+      expect(
+        values,
+        containsAll([
+          DownloadStatus.downloading,
+          DownloadStatus.calculatingChecksum,
+        ]),
+      );
     });
   });
 
@@ -41,11 +43,14 @@ void main() {
 
       // Then: Should have exactly 3 strategies
       expect(values.length, equals(3));
-      expect(values, containsAll([
-        FileConflictStrategy.overwrite,
-        FileConflictStrategy.rename,
-        FileConflictStrategy.error,
-      ]));
+      expect(
+        values,
+        containsAll([
+          FileConflictStrategy.overwrite,
+          FileConflictStrategy.rename,
+          FileConflictStrategy.error,
+        ]),
+      );
     });
   });
 
@@ -56,14 +61,46 @@ void main() {
         const config = RangeRequestConfig();
 
         // Then: All defaults should be set correctly
-        expect(config.chunkSize, equals(10 * 1024 * 1024), reason: 'Default chunk size should be 10MB');
-        expect(config.maxConcurrentRequests, equals(8), reason: 'Default concurrent requests should be 8');
-        expect(config.headers, equals(const {}), reason: 'Default headers should be empty');
-        expect(config.maxRetries, equals(3), reason: 'Default max retries should be 3');
-        expect(config.retryDelayMs, equals(1000), reason: 'Default retry delay should be 1000ms');
-        expect(config.tempFileExtension, equals('.tmp'), reason: 'Default temp extension should be .tmp');
-        expect(config.connectionTimeout, equals(const Duration(seconds: 30)), reason: 'Default timeout should be 30s');
-        expect(config.progressInterval, equals(const Duration(milliseconds: 500)), reason: 'Default progress interval should be 500ms');
+        expect(
+          config.chunkSize,
+          equals(10 * 1024 * 1024),
+          reason: 'Default chunk size should be 10MB',
+        );
+        expect(
+          config.maxConcurrentRequests,
+          equals(8),
+          reason: 'Default concurrent requests should be 8',
+        );
+        expect(
+          config.headers,
+          equals(const {}),
+          reason: 'Default headers should be empty',
+        );
+        expect(
+          config.maxRetries,
+          equals(3),
+          reason: 'Default max retries should be 3',
+        );
+        expect(
+          config.retryDelayMs,
+          equals(1000),
+          reason: 'Default retry delay should be 1000ms',
+        );
+        expect(
+          config.tempFileExtension,
+          equals('.tmp'),
+          reason: 'Default temp extension should be .tmp',
+        );
+        expect(
+          config.connectionTimeout,
+          equals(const Duration(seconds: 30)),
+          reason: 'Default timeout should be 30s',
+        );
+        expect(
+          config.progressInterval,
+          equals(const Duration(milliseconds: 500)),
+          reason: 'Default progress interval should be 500ms',
+        );
       });
     });
 
@@ -99,10 +136,7 @@ void main() {
 
       test('should support partial customization', () {
         // Given/When: Creating config with only some custom values
-        const config = RangeRequestConfig(
-          chunkSize: 1024,
-          maxRetries: 10,
-        );
+        const config = RangeRequestConfig(chunkSize: 1024, maxRetries: 10);
 
         // Then: Custom values should be set, defaults should remain
         expect(config.chunkSize, equals(1024));
@@ -113,7 +147,10 @@ void main() {
         expect(config.retryDelayMs, equals(1000));
         expect(config.tempFileExtension, equals('.tmp'));
         expect(config.connectionTimeout, equals(const Duration(seconds: 30)));
-        expect(config.progressInterval, equals(const Duration(milliseconds: 500)));
+        expect(
+          config.progressInterval,
+          equals(const Duration(milliseconds: 500)),
+        );
       });
     });
 
@@ -194,7 +231,10 @@ void main() {
         expect(updated.maxRetries, equals(10));
         expect(updated.progressInterval, equals(const Duration(seconds: 1)));
         // Unchanged fields
-        expect(updated.maxConcurrentRequests, equals(original.maxConcurrentRequests));
+        expect(
+          updated.maxConcurrentRequests,
+          equals(original.maxConcurrentRequests),
+        );
         expect(updated.headers, equals(original.headers));
         expect(updated.retryDelayMs, equals(original.retryDelayMs));
         expect(updated.tempFileExtension, equals(original.tempFileExtension));
@@ -219,7 +259,10 @@ void main() {
 
         // Then: All fields should be identical
         expect(copy.chunkSize, equals(original.chunkSize));
-        expect(copy.maxConcurrentRequests, equals(original.maxConcurrentRequests));
+        expect(
+          copy.maxConcurrentRequests,
+          equals(original.maxConcurrentRequests),
+        );
         expect(copy.headers, equals(original.headers));
         expect(copy.maxRetries, equals(original.maxRetries));
         expect(copy.retryDelayMs, equals(original.retryDelayMs));
@@ -253,19 +296,18 @@ void main() {
         expect(updated.retryDelayMs, equals(3000));
         expect(updated.tempFileExtension, equals('.downloading'));
         expect(updated.connectionTimeout, equals(const Duration(minutes: 2)));
-        expect(updated.progressInterval, equals(const Duration(milliseconds: 250)));
+        expect(
+          updated.progressInterval,
+          equals(const Duration(milliseconds: 250)),
+        );
       });
 
       test('should handle headers update correctly', () {
         // Given: Original config with headers
-        const original = RangeRequestConfig(
-          headers: {'X-Original': 'value'},
-        );
+        const original = RangeRequestConfig(headers: {'X-Original': 'value'});
 
         // When: Updating headers
-        final updated = original.copyWith(
-          headers: {'X-New': 'new-value'},
-        );
+        final updated = original.copyWith(headers: {'X-New': 'new-value'});
 
         // Then: Headers should be replaced entirely
         expect(updated.headers, equals({'X-New': 'new-value'}));
@@ -339,11 +381,7 @@ void main() {
 
       test('should work with null fileName', () {
         // Given/When: Creating server info without file name
-        const info = (
-          acceptRanges: false,
-          contentLength: 5000,
-          fileName: null,
-        );
+        const info = (acceptRanges: false, contentLength: 5000, fileName: null);
 
         // Then: Should handle null fileName correctly
         expect(info.acceptRanges, isFalse);
@@ -355,10 +393,7 @@ void main() {
     group('ChunkRange', () {
       test('should work with start and end values', () {
         // Given/When: Creating a chunk range
-        const range = (
-          start: 0,
-          end: 1023,
-        );
+        const range = (start: 0, end: 1023);
 
         // Then: Values should be accessible
         expect(range.start, equals(0));
@@ -367,10 +402,7 @@ void main() {
 
       test('should work with different byte ranges', () {
         // Given/When: Creating a range in the middle of a file
-        const range = (
-          start: 1024,
-          end: 2047,
-        );
+        const range = (start: 1024, end: 2047);
 
         // Then: Values should be accessible
         expect(range.start, equals(1024));

@@ -33,7 +33,8 @@ class DownloadPage extends StatefulWidget {
 
 class _DownloadPageState extends State<DownloadPage> {
   // Using a GGUF model file from HuggingFace (about 270MB)
-  final String _sampleUrl = 'https://huggingface.co/unsloth/gemma-3-270m-it-GGUF/resolve/main/gemma-3-270m-it-UD-IQ2_M.gguf';
+  final String _sampleUrl =
+      'https://huggingface.co/unsloth/gemma-3-270m-it-GGUF/resolve/main/gemma-3-270m-it-UD-IQ2_M.gguf';
 
   double _progress = 0.0;
   String _status = 'Ready to download';
@@ -201,9 +202,7 @@ class _DownloadPageState extends State<DownloadPage> {
                       : null,
                   icon: const Icon(Icons.delete),
                   label: const Text('Delete'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 ),
               ],
             ),
