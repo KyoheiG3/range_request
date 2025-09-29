@@ -230,4 +230,9 @@ class RangeRequestClient {
   void clearTokens() {
     _cancelTokenGroup.clear();
   }
+
+  /// Cancel all active operations and clear all tokens
+  void cancelAndClear() {
+    _cancelTokenGroup.cancelAndClear();
+  }
 }
