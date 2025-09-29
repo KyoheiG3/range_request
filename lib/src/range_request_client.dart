@@ -1,20 +1,27 @@
 import 'dart:async';
 
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 
 import 'cancel_token.dart';
 import 'cancel_token_group.dart';
 import 'chunk_fetcher.dart';
 import 'exceptions.dart';
+import 'http.dart';
 import 'models.dart';
 import 'retry_handler.dart';
 
 /// Client for performing HTTP range requests
 class RangeRequestClient {
   final RangeRequestConfig config;
-  final CancelTokenGroup _cancelTokenGroup = CancelTokenGroup();
+  final _cancelTokenGroup = CancelTokenGroup();
 
-  RangeRequestClient({this.config = const RangeRequestConfig()});
+  /// Factory for creating HTTP clients
+  final Http http;
+
+  RangeRequestClient({
+    this.config = const RangeRequestConfig(),
+    this.http = const DefaultHttp(),
+  });
 
   /// Check if server supports range requests and get content length
   Future<ServerInfo> checkServerInfo(Uri url) async {
@@ -79,10 +86,11 @@ class RangeRequestClient {
     while (retryHandler.shouldRetry) {
       cancelToken.throwIfCancelled();
 
-      final request = http.Request('GET', url);
+      final request = Request('GET', url);
       request.headers.addAll(config.headers);
 
-      final client = http.Client();
+      // Create client using factory
+      final client = http.createClient();
       cancelToken.registerClient(client);
 
       try {
@@ -104,9 +112,6 @@ class RangeRequestClient {
 
         break; // Success, exit retry loop
       } catch (e) {
-        // If cancelled, don't retry
-        cancelToken.throwIfCancelled();
-
         if (!await retryHandler.handleError()) {
           rethrow;
         }
@@ -132,6 +137,7 @@ class RangeRequestClient {
       startOffset: startBytes,
       cancelToken: cancelToken,
       onProgress: onProgress,
+      http: http,
     );
 
     await chunks.startInitialFetches();
@@ -163,8 +169,6 @@ class RangeRequestClient {
 
     // Register token with the group
     _cancelTokenGroup.addToken(effectiveToken);
-
-    effectiveToken.throwIfCancelled();
 
     var receivedBytes = startBytes;
 

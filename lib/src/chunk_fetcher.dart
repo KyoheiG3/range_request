@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 
 import 'cancel_token.dart';
 import 'exceptions.dart';
+import 'http.dart';
 import 'models.dart';
 import 'retry_handler.dart';
 
@@ -18,6 +19,7 @@ class ChunkFetcher {
   final void Function(int)? onProgress;
   final int startOffset;
   final CancelToken cancelToken;
+  final Http http;
 
   int nextChunkIndex = 0;
   int nextWriteIndex = 0;
@@ -29,6 +31,7 @@ class ChunkFetcher {
     this.startOffset = 0,
     required this.cancelToken,
     this.onProgress,
+    required this.http,
   }) : ranges = _calculateRanges(contentLength, config.chunkSize, startOffset);
 
   bool get hasMore => activeTasks.isNotEmpty || pendingChunks.isNotEmpty;
@@ -43,8 +46,6 @@ class ChunkFetcher {
   }
 
   Future<void> processNextCompletion() async {
-    cancelToken.throwIfCancelled();
-
     // Wait for any download to complete
     final completed = await Future.any(
       activeTasks.entries.map((entry) async {
@@ -90,30 +91,36 @@ class ChunkFetcher {
     while (retryHandler.shouldRetry) {
       cancelToken.throwIfCancelled();
 
+      // Create client using factory
+      final client = http.createClient();
+      cancelToken.registerClient(client);
+
       try {
-        final response = await http
-            .get(
-              url,
-              headers: {
-                'Range': 'bytes=${range.start}-${range.end}',
-                ...config.headers,
-              },
-            )
+        final request = Request('GET', url);
+        request.headers['Range'] = 'bytes=${range.start}-${range.end}';
+        request.headers.addAll(config.headers);
+
+        final streamedResponse = await client
+            .send(request)
             .timeout(config.connectionTimeout);
 
-        if (response.statusCode != 206) {
+        if (streamedResponse.statusCode != 206) {
           throw RangeRequestException(
             code: RangeRequestErrorCode.invalidResponse,
             message:
-                'Expected 206 Partial Content but got ${response.statusCode}',
+                'Expected 206 Partial Content but got ${streamedResponse.statusCode}',
           );
         }
 
+        final response = await Response.fromStream(streamedResponse);
         return response.bodyBytes;
       } catch (e) {
         if (!await retryHandler.handleError()) {
           rethrow;
         }
+      } finally {
+        cancelToken.unregisterClient();
+        client.close();
       }
     }
 
