@@ -12,7 +12,7 @@ import 'range_request_client.dart';
 class FileDownloader {
   final RangeRequestClient client;
 
-  const FileDownloader(this.client);
+  const FileDownloader([this.client = const RangeRequestClient()]);
 
   /// Create a FileDownloader with a new RangeRequestClient using the provided config
   factory FileDownloader.fromConfig(RangeRequestConfig config) {
@@ -69,7 +69,6 @@ class FileDownloader {
     bool resume = true,
     ChecksumType checksumType = ChecksumType.none,
     FileConflictStrategy conflictStrategy = FileConflictStrategy.overwrite,
-    Duration progressInterval = const Duration(milliseconds: 500),
     CancelToken? cancelToken,
     void Function(int bytes, int total, DownloadStatus status)? onProgress,
   }) async {
@@ -126,7 +125,6 @@ class FileDownloader {
         url: url,
         info: info,
         startBytes: startBytes,
-        progressInterval: progressInterval,
         cancelToken: cancelToken,
         onProgress: onProgress,
       );
@@ -183,7 +181,6 @@ class FileDownloader {
     required Uri url,
     required ServerInfo info,
     required int startBytes,
-    required Duration progressInterval,
     CancelToken? cancelToken,
     void Function(int, int, DownloadStatus)? onProgress,
   }) async {
@@ -195,7 +192,6 @@ class FileDownloader {
       contentLength: info.contentLength,
       acceptRanges: info.acceptRanges,
       startBytes: startBytes,
-      progressInterval: progressInterval,
       cancelToken: cancelToken,
       onProgress: (bytes, total) =>
           onProgress?.call(bytes, total, DownloadStatus.downloading),

@@ -426,12 +426,15 @@ void main() {
           });
 
           // When: Fetching with progress callback
-          final client = RangeRequestClient();
+          final client = RangeRequestClient(
+            config: RangeRequestConfig(
+              progressInterval: const Duration(milliseconds: 20),
+            ),
+          );
           final progressReports = <(int, int)>[];
 
           await for (final _ in client.fetch(
             serverUrl,
-            progressInterval: const Duration(milliseconds: 20),
             onProgress: (bytes, total) {
               progressReports.add((bytes, total));
             },

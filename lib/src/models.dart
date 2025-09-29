@@ -75,6 +75,9 @@ class RangeRequestConfig {
   /// Connection timeout for HTTP requests (default: 30 seconds)
   final Duration connectionTimeout;
 
+  /// Interval for progress callbacks (default: 500 milliseconds)
+  final Duration progressInterval;
+
   const RangeRequestConfig({
     this.chunkSize = 10 * 1024 * 1024, // 10MB
     this.maxConcurrentRequests = 8,
@@ -83,5 +86,29 @@ class RangeRequestConfig {
     this.retryDelayMs = 1000,
     this.tempFileExtension = '.tmp',
     this.connectionTimeout = const Duration(seconds: 30),
+    this.progressInterval = const Duration(milliseconds: 500),
   });
+
+  /// Creates a copy of this configuration with the given fields replaced with new values
+  RangeRequestConfig copyWith({
+    int? chunkSize,
+    int? maxConcurrentRequests,
+    Map<String, String>? headers,
+    int? maxRetries,
+    int? retryDelayMs,
+    String? tempFileExtension,
+    Duration? connectionTimeout,
+    Duration? progressInterval,
+  }) {
+    return RangeRequestConfig(
+      chunkSize: chunkSize ?? this.chunkSize,
+      maxConcurrentRequests: maxConcurrentRequests ?? this.maxConcurrentRequests,
+      headers: headers ?? this.headers,
+      maxRetries: maxRetries ?? this.maxRetries,
+      retryDelayMs: retryDelayMs ?? this.retryDelayMs,
+      tempFileExtension: tempFileExtension ?? this.tempFileExtension,
+      connectionTimeout: connectionTimeout ?? this.connectionTimeout,
+      progressInterval: progressInterval ?? this.progressInterval,
+    );
+  }
 }

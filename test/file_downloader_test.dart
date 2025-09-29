@@ -243,13 +243,15 @@ void main() {
 
           // When: Downloading with progress callback
           final downloader = FileDownloader.fromConfig(
-            RangeRequestConfig(chunkSize: 10),
+            RangeRequestConfig(
+              chunkSize: 10,
+              progressInterval: const Duration(milliseconds: 10),
+            ),
           );
           await downloader.downloadToFile(
             serverUrl,
             tempDir.path,
             checksumType: ChecksumType.sha256,
-            progressInterval: const Duration(milliseconds: 10),
             onProgress: (bytes, total, status) {
               progressReports.add((bytes, total, status));
             },
