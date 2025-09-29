@@ -88,4 +88,27 @@ class RangeRequestConfig {
     this.connectionTimeout = const Duration(seconds: 30),
     this.progressInterval = const Duration(milliseconds: 500),
   });
+
+  /// Creates a copy of this configuration with the given fields replaced with new values
+  RangeRequestConfig copyWith({
+    int? chunkSize,
+    int? maxConcurrentRequests,
+    Map<String, String>? headers,
+    int? maxRetries,
+    int? retryDelayMs,
+    String? tempFileExtension,
+    Duration? connectionTimeout,
+    Duration? progressInterval,
+  }) {
+    return RangeRequestConfig(
+      chunkSize: chunkSize ?? this.chunkSize,
+      maxConcurrentRequests: maxConcurrentRequests ?? this.maxConcurrentRequests,
+      headers: headers ?? this.headers,
+      maxRetries: maxRetries ?? this.maxRetries,
+      retryDelayMs: retryDelayMs ?? this.retryDelayMs,
+      tempFileExtension: tempFileExtension ?? this.tempFileExtension,
+      connectionTimeout: connectionTimeout ?? this.connectionTimeout,
+      progressInterval: progressInterval ?? this.progressInterval,
+    );
+  }
 }

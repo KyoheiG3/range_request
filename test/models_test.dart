@@ -63,6 +63,7 @@ void main() {
         expect(config.retryDelayMs, equals(1000), reason: 'Default retry delay should be 1000ms');
         expect(config.tempFileExtension, equals('.tmp'), reason: 'Default temp extension should be .tmp');
         expect(config.connectionTimeout, equals(const Duration(seconds: 30)), reason: 'Default timeout should be 30s');
+        expect(config.progressInterval, equals(const Duration(milliseconds: 500)), reason: 'Default progress interval should be 500ms');
       });
     });
 
@@ -71,6 +72,7 @@ void main() {
         // Given: Custom configuration values
         const customHeaders = {'Authorization': 'Bearer token'};
         const customTimeout = Duration(seconds: 60);
+        const customProgressInterval = Duration(milliseconds: 100);
 
         // When: Creating config with custom values
         const config = RangeRequestConfig(
@@ -81,6 +83,7 @@ void main() {
           retryDelayMs: 2000,
           tempFileExtension: '.download',
           connectionTimeout: customTimeout,
+          progressInterval: customProgressInterval,
         );
 
         // Then: All custom values should be set
@@ -91,6 +94,7 @@ void main() {
         expect(config.retryDelayMs, equals(2000));
         expect(config.tempFileExtension, equals('.download'));
         expect(config.connectionTimeout, equals(customTimeout));
+        expect(config.progressInterval, equals(customProgressInterval));
       });
 
       test('should support partial customization', () {
@@ -109,6 +113,7 @@ void main() {
         expect(config.retryDelayMs, equals(1000));
         expect(config.tempFileExtension, equals('.tmp'));
         expect(config.connectionTimeout, equals(const Duration(seconds: 30)));
+        expect(config.progressInterval, equals(const Duration(milliseconds: 500)));
       });
     });
 
@@ -169,6 +174,115 @@ void main() {
         expect(config.headers['User-Agent'], equals('MyApp/1.0'));
         expect(config.headers['X-Custom-Header'], equals('value'));
         expect(config.headers['Accept'], equals('application/json'));
+      });
+    });
+
+    group('copyWith method', () {
+      test('should create new instance with updated fields', () {
+        // Given: Original config
+        const original = RangeRequestConfig();
+
+        // When: Using copyWith to update some fields
+        final updated = original.copyWith(
+          chunkSize: 5 * 1024 * 1024,
+          maxRetries: 10,
+          progressInterval: const Duration(seconds: 1),
+        );
+
+        // Then: Updated fields should be changed, others should remain
+        expect(updated.chunkSize, equals(5 * 1024 * 1024));
+        expect(updated.maxRetries, equals(10));
+        expect(updated.progressInterval, equals(const Duration(seconds: 1)));
+        // Unchanged fields
+        expect(updated.maxConcurrentRequests, equals(original.maxConcurrentRequests));
+        expect(updated.headers, equals(original.headers));
+        expect(updated.retryDelayMs, equals(original.retryDelayMs));
+        expect(updated.tempFileExtension, equals(original.tempFileExtension));
+        expect(updated.connectionTimeout, equals(original.connectionTimeout));
+      });
+
+      test('should preserve all fields when no arguments provided', () {
+        // Given: Original config with custom values
+        const original = RangeRequestConfig(
+          chunkSize: 1024,
+          maxConcurrentRequests: 2,
+          headers: {'key': 'value'},
+          maxRetries: 5,
+          retryDelayMs: 500,
+          tempFileExtension: '.part',
+          connectionTimeout: Duration(seconds: 10),
+          progressInterval: Duration(seconds: 2),
+        );
+
+        // When: Using copyWith with no arguments
+        final copy = original.copyWith();
+
+        // Then: All fields should be identical
+        expect(copy.chunkSize, equals(original.chunkSize));
+        expect(copy.maxConcurrentRequests, equals(original.maxConcurrentRequests));
+        expect(copy.headers, equals(original.headers));
+        expect(copy.maxRetries, equals(original.maxRetries));
+        expect(copy.retryDelayMs, equals(original.retryDelayMs));
+        expect(copy.tempFileExtension, equals(original.tempFileExtension));
+        expect(copy.connectionTimeout, equals(original.connectionTimeout));
+        expect(copy.progressInterval, equals(original.progressInterval));
+      });
+
+      test('should update all fields when all arguments provided', () {
+        // Given: Original config
+        const original = RangeRequestConfig();
+        const newHeaders = {'Authorization': 'Bearer xyz'};
+
+        // When: Using copyWith to update all fields
+        final updated = original.copyWith(
+          chunkSize: 2048,
+          maxConcurrentRequests: 16,
+          headers: newHeaders,
+          maxRetries: 6,
+          retryDelayMs: 3000,
+          tempFileExtension: '.downloading',
+          connectionTimeout: const Duration(minutes: 2),
+          progressInterval: const Duration(milliseconds: 250),
+        );
+
+        // Then: All fields should be updated
+        expect(updated.chunkSize, equals(2048));
+        expect(updated.maxConcurrentRequests, equals(16));
+        expect(updated.headers, equals(newHeaders));
+        expect(updated.maxRetries, equals(6));
+        expect(updated.retryDelayMs, equals(3000));
+        expect(updated.tempFileExtension, equals('.downloading'));
+        expect(updated.connectionTimeout, equals(const Duration(minutes: 2)));
+        expect(updated.progressInterval, equals(const Duration(milliseconds: 250)));
+      });
+
+      test('should handle headers update correctly', () {
+        // Given: Original config with headers
+        const original = RangeRequestConfig(
+          headers: {'X-Original': 'value'},
+        );
+
+        // When: Updating headers
+        final updated = original.copyWith(
+          headers: {'X-New': 'new-value'},
+        );
+
+        // Then: Headers should be replaced entirely
+        expect(updated.headers, equals({'X-New': 'new-value'}));
+        expect(updated.headers.containsKey('X-Original'), isFalse);
+      });
+
+      test('should create new instance (not modify original)', () {
+        // Given: Original config
+        const original = RangeRequestConfig(chunkSize: 1000);
+
+        // When: Creating a copy with changes
+        final copy = original.copyWith(chunkSize: 2000);
+
+        // Then: Original should be unchanged
+        expect(original.chunkSize, equals(1000));
+        expect(copy.chunkSize, equals(2000));
+        expect(identical(original, copy), isFalse);
       });
     });
   });
