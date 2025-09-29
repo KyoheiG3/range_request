@@ -164,7 +164,7 @@ void main() {
             url: serverUrl,
             contentLength: testBytes.length,
             config: config,
-          cancelToken: CancelToken(),
+            cancelToken: CancelToken(),
           );
 
           // Then: Should have single range covering entire file
@@ -214,7 +214,7 @@ void main() {
             url: serverUrl,
             contentLength: testBytes.length,
             config: config,
-          cancelToken: CancelToken(),
+            cancelToken: CancelToken(),
           );
           await fetcher.startInitialFetches();
 
@@ -289,7 +289,7 @@ void main() {
             url: serverUrl,
             contentLength: testBytes.length,
             config: config,
-          cancelToken: CancelToken(),
+            cancelToken: CancelToken(),
           );
           await fetcher.startInitialFetches();
 

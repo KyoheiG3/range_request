@@ -93,7 +93,9 @@ void main() {
       group('when server does not support range requests', () {
         test('should indicate no range support', () async {
           // Given: Server without range support
-          await serverHelper.setupServerWithoutRangeSupport(testBytes: testBytes);
+          await serverHelper.setupServerWithoutRangeSupport(
+            testBytes: testBytes,
+          );
 
           // When: Checking server info
           final client = RangeRequestClient();
@@ -278,7 +280,9 @@ void main() {
 
       group('when server does not support range requests', () {
         setUp(() async {
-          await serverHelper.setupServerWithoutRangeSupport(testBytes: testBytes);
+          await serverHelper.setupServerWithoutRangeSupport(
+            testBytes: testBytes,
+          );
         });
 
         test('should fall back to serial download', () async {
@@ -743,16 +747,12 @@ void main() {
         final token2 = CancelToken();
 
         // Start downloads to register tokens (cancel immediately to avoid issues)
-        client.fetch(serverUrl, cancelToken: token1).listen(
-          (_) {},
-          onError: (_) {},
-          cancelOnError: true,
-        );
-        client.fetch(serverUrl, cancelToken: token2).listen(
-          (_) {},
-          onError: (_) {},
-          cancelOnError: true,
-        );
+        client
+            .fetch(serverUrl, cancelToken: token1)
+            .listen((_) {}, onError: (_) {}, cancelOnError: true);
+        client
+            .fetch(serverUrl, cancelToken: token2)
+            .listen((_) {}, onError: (_) {}, cancelOnError: true);
 
         // Give a moment for tokens to be registered
         await Future.delayed(const Duration(milliseconds: 10));

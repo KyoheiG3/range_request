@@ -13,7 +13,7 @@ class FileDownloader {
   final RangeRequestClient client;
 
   FileDownloader([RangeRequestClient? client])
-      : client = client ?? RangeRequestClient();
+    : client = client ?? RangeRequestClient();
 
   /// Create a FileDownloader with a new RangeRequestClient using the provided config
   factory FileDownloader.fromConfig(RangeRequestConfig config) {

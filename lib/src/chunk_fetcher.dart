@@ -61,8 +61,7 @@ class ChunkFetcher {
     onProgress?.call(completed.data.length);
 
     // Queue next fetch if available
-    if (nextChunkIndex < ranges.length &&
-        !cancelToken.isCancelled) {
+    if (nextChunkIndex < ranges.length && !cancelToken.isCancelled) {
       nextChunkIndex = _queueFetch(nextChunkIndex);
     }
   }

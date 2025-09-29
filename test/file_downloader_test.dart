@@ -445,7 +445,9 @@ void main() {
       group('filename handling', () {
         test('should handle files without extension', () async {
           // Given: A URL without file extension
-          final noExtUrl = Uri.parse('http://localhost:${serverHelper.server?.port ?? 0}/noext');
+          final noExtUrl = Uri.parse(
+            'http://localhost:${serverHelper.server?.port ?? 0}/noext',
+          );
           await setupServer();
 
           // When: Downloading file without extension
@@ -501,7 +503,8 @@ void main() {
           await tempFile.writeAsBytes(testBytes.sublist(0, 10));
 
           // When: Server fails during resume attempt
-          await serverHelper.createServer(); // Recreate server to simulate failure
+          await serverHelper
+              .createServer(); // Recreate server to simulate failure
           await setupServer(statusCode: 500);
 
           try {

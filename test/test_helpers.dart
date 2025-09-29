@@ -150,7 +150,8 @@ class TestServerHelper {
 
   /// Helper to setup server with custom response behavior
   Future<void> setupCustomServer({
-    required Future<void> Function(HttpRequest request, RequestTracker tracker) handler,
+    required Future<void> Function(HttpRequest request, RequestTracker tracker)
+    handler,
   }) async {
     final tracker = RequestTracker();
 
