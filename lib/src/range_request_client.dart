@@ -153,7 +153,6 @@ class RangeRequestClient {
     int? contentLength,
     bool? acceptRanges,
     int startBytes = 0,
-    Duration progressInterval = const Duration(milliseconds: 500),
     CancelToken? cancelToken,
     void Function(int bytes, int total)? onProgress,
   }) async* {
@@ -173,7 +172,7 @@ class RangeRequestClient {
     // Set up progress timer if callback provided
     Timer? progressTimer;
     if (onProgress != null) {
-      progressTimer = Timer.periodic(progressInterval, (_) {
+      progressTimer = Timer.periodic(config.progressInterval, (_) {
         if (receivedBytes > 0) {
           onProgress(receivedBytes, info.contentLength);
         }
