@@ -8,24 +8,27 @@ import 'package:range_request/src/exceptions.dart';
 import 'package:range_request/src/models.dart';
 import 'package:test/test.dart';
 
+import 'test_helpers.dart';
+
 void main() {
   group('ChunkFetcher', () {
-    late HttpServer server;
+    late TestServerHelper serverHelper;
     late Uri serverUrl;
     const testData = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final testBytes = utf8.encode(testData);
 
     setUp(() async {
-      server = await HttpServer.bind('localhost', 0);
-      serverUrl = Uri.parse('http://localhost:${server.port}/test');
+      serverHelper = TestServerHelper();
+      await serverHelper.createServer();
+      serverUrl = serverHelper.serverUrl;
     });
 
     tearDown(() async {
-      await server.close(force: true);
+      await serverHelper.closeServer();
     });
 
-    void setupStandardServer() {
-      server.listen((request) async {
+    Future<void> setupStandardServer() async {
+      await serverHelper.setupServer((request) async {
         final rangeHeader = request.headers['range']?.first;
 
         if (rangeHeader != null && rangeHeader.startsWith('bytes=')) {
@@ -60,6 +63,7 @@ void main() {
             url: serverUrl,
             contentLength: 40,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           // Then: Should create 4 equal ranges
@@ -79,6 +83,7 @@ void main() {
             url: serverUrl,
             contentLength: 36,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           // Then: Last range should be smaller
@@ -101,6 +106,7 @@ void main() {
             contentLength: 36,
             config: config,
             startOffset: 15,
+            cancelToken: CancelToken(),
           );
 
           // Then: Should create ranges starting from offset
@@ -120,6 +126,7 @@ void main() {
             contentLength: 36,
             config: config,
             startOffset: 20,
+            cancelToken: CancelToken(),
           );
 
           // Then: Should align with chunk boundaries
@@ -139,6 +146,7 @@ void main() {
             url: serverUrl,
             contentLength: 0,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           // Then: Should have no ranges or active tasks
@@ -156,6 +164,7 @@ void main() {
             url: serverUrl,
             contentLength: testBytes.length,
             config: config,
+          cancelToken: CancelToken(),
           );
 
           // Then: Should have single range covering entire file
@@ -175,6 +184,7 @@ void main() {
             url: serverUrl,
             contentLength: 5,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           // Then: Should create range for each byte
@@ -187,8 +197,8 @@ void main() {
     });
 
     group('parallel fetching', () {
-      setUp(() {
-        setupStandardServer();
+      setUp(() async {
+        await setupStandardServer();
       });
 
       group('with concurrent limits', () {
@@ -204,6 +214,7 @@ void main() {
             url: serverUrl,
             contentLength: testBytes.length,
             config: config,
+          cancelToken: CancelToken(),
           );
           await fetcher.startInitialFetches();
 
@@ -222,6 +233,7 @@ void main() {
             url: serverUrl,
             contentLength: 20,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           // When: Processing first completion
@@ -244,6 +256,7 @@ void main() {
             url: serverUrl,
             contentLength: 20,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           // When: Processing all chunks sequentially
@@ -276,6 +289,7 @@ void main() {
             url: serverUrl,
             contentLength: testBytes.length,
             config: config,
+          cancelToken: CancelToken(),
           );
           await fetcher.startInitialFetches();
 
@@ -304,6 +318,7 @@ void main() {
             url: serverUrl,
             contentLength: 30,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           // When: Starting fetches
@@ -321,12 +336,10 @@ void main() {
         test('should retry failed requests', () async {
           // Given: Server that fails first 2 attempts
           var requestCount = 0;
-          final errorServer = await HttpServer.bind('localhost', 0);
-          final errorUrl = Uri.parse(
-            'http://localhost:${errorServer.port}/test',
-          );
+          final errorServerHelper = TestServerHelper();
+          await errorServerHelper.createServer();
 
-          errorServer.listen((request) async {
+          await errorServerHelper.setupServer((request) async {
             requestCount++;
             if (requestCount <= 2) {
               request.response.statusCode = 500;
@@ -347,9 +360,10 @@ void main() {
             retryDelayMs: 10,
           );
           final fetcher = ChunkFetcher(
-            url: errorUrl,
+            url: errorServerHelper.serverUrl,
             contentLength: 10,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           await fetcher.startInitialFetches();
@@ -358,17 +372,15 @@ void main() {
           // Then: Should succeed after 3 attempts
           expect(requestCount, equals(3));
 
-          await errorServer.close();
+          await errorServerHelper.closeServer();
         });
 
         test('should fail after max retries exceeded', () async {
           // Given: Server that always returns 500
-          final errorServer = await HttpServer.bind('localhost', 0);
-          final errorUrl = Uri.parse(
-            'http://localhost:${errorServer.port}/test',
-          );
+          final errorServerHelper = TestServerHelper();
+          await errorServerHelper.createServer();
 
-          errorServer.listen((request) async {
+          await errorServerHelper.setupServer((request) async {
             request.response.statusCode = 500;
             await request.response.close();
           });
@@ -380,9 +392,10 @@ void main() {
             retryDelayMs: 10,
           );
           final fetcher = ChunkFetcher(
-            url: errorUrl,
+            url: errorServerHelper.serverUrl,
             contentLength: 10,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           await fetcher.startInitialFetches();
@@ -399,19 +412,17 @@ void main() {
             ),
           );
 
-          await errorServer.close();
+          await errorServerHelper.closeServer();
         });
       });
 
       group('with invalid responses', () {
         test('should reject non-206 status for range requests', () async {
           // Given: Server returning 200 instead of 206
-          final invalidServer = await HttpServer.bind('localhost', 0);
-          final invalidUrl = Uri.parse(
-            'http://localhost:${invalidServer.port}/test',
-          );
+          final invalidServerHelper = TestServerHelper();
+          await invalidServerHelper.createServer();
 
-          invalidServer.listen((request) async {
+          await invalidServerHelper.setupServer((request) async {
             // Return 200 instead of expected 206
             request.response.statusCode = 200;
             request.response.add(testBytes);
@@ -421,9 +432,10 @@ void main() {
           // When: Attempting range request
           const config = RangeRequestConfig(chunkSize: 10, maxRetries: 0);
           final fetcher = ChunkFetcher(
-            url: invalidUrl,
+            url: invalidServerHelper.serverUrl,
             contentLength: testBytes.length,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           await fetcher.startInitialFetches();
@@ -440,19 +452,19 @@ void main() {
             ),
           );
 
-          await invalidServer.close();
+          await invalidServerHelper.closeServer();
         });
       });
 
       group('with timeouts', () {
         test('should timeout slow responses', () async {
           // Given: Server that never responds
-          final slowServer = await HttpServer.bind('localhost', 0);
-          final slowUrl = Uri.parse('http://localhost:${slowServer.port}/test');
+          final slowServerHelper = TestServerHelper();
+          await slowServerHelper.createServer();
 
-          slowServer.listen((request) async {
+          await slowServerHelper.setupServer((request) async {
             // Never respond
-            await Future.delayed(const Duration(seconds: 10));
+            await Future.delayed(const Duration(seconds: 1));
           });
 
           // When: Fetching with short timeout
@@ -462,9 +474,10 @@ void main() {
             maxRetries: 0,
           );
           final fetcher = ChunkFetcher(
-            url: slowUrl,
+            url: slowServerHelper.serverUrl,
             contentLength: 10,
             config: config,
+            cancelToken: CancelToken(),
           );
 
           await fetcher.startInitialFetches();
@@ -475,14 +488,14 @@ void main() {
             throwsA(isA<TimeoutException>()),
           );
 
-          await slowServer.close();
+          await slowServerHelper.closeServer();
         });
       });
     });
 
     group('cancellation', () {
-      setUp(() {
-        setupStandardServer();
+      setUp(() async {
+        await setupStandardServer();
       });
 
       test('should throw when cancelled during fetch', () async {
@@ -545,8 +558,8 @@ void main() {
     });
 
     group('progress tracking', () {
-      setUp(() {
-        setupStandardServer();
+      setUp(() async {
+        await setupStandardServer();
       });
 
       test('should report progress for each received chunk', () async {
@@ -562,6 +575,7 @@ void main() {
           url: serverUrl,
           contentLength: testBytes.length,
           config: config,
+          cancelToken: CancelToken(),
           onProgress: progressBytes.add,
         );
 
@@ -587,6 +601,7 @@ void main() {
           url: serverUrl,
           contentLength: testBytes.length,
           config: config,
+          cancelToken: CancelToken(),
           onProgress: null,
         );
 

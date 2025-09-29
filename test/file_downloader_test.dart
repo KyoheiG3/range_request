@@ -8,9 +8,11 @@ import 'package:range_request/src/file_downloader.dart';
 import 'package:range_request/src/models.dart';
 import 'package:test/test.dart';
 
+import 'test_helpers.dart';
+
 void main() {
   group('FileDownloader', () {
-    late HttpServer server;
+    late TestServerHelper serverHelper;
     late Uri serverUrl;
     late Directory tempDir;
     const testData =
@@ -20,26 +22,27 @@ void main() {
     final testMd5 = md5.convert(testBytes).toString();
 
     setUp(() async {
-      server = await HttpServer.bind('localhost', 0);
-      serverUrl = Uri.parse('http://localhost:${server.port}/test.txt');
+      serverHelper = TestServerHelper();
+      await serverHelper.createServer();
+      serverUrl = serverHelper.serverUrl;
       tempDir = await Directory.systemTemp.createTemp('range_request_test_');
     });
 
     tearDown(() async {
-      await server.close(force: true);
+      await serverHelper.closeServer();
       if (await tempDir.exists()) {
         await tempDir.delete(recursive: true);
       }
     });
 
     // Helper function to setup mock HTTP server
-    void setupServer({
+    Future<void> setupServer({
       bool supportRanges = true,
       String? fileName,
       int statusCode = 200,
       List<int>? customData,
-    }) {
-      server.listen((request) async {
+    }) async {
+      await serverHelper.setupServer((request) async {
         if (request.method == 'HEAD') {
           request.response.statusCode = statusCode;
           if (statusCode == 200) {
@@ -88,7 +91,7 @@ void main() {
       group('basic download operations', () {
         test('should download file successfully', () async {
           // Given: A server with test data
-          setupServer();
+          await setupServer();
 
           // When: Downloading the file
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -110,7 +113,7 @@ void main() {
 
         test('should use custom output filename', () async {
           // Given: A server and a custom filename
-          setupServer();
+          await setupServer();
 
           // When: Downloading with custom filename
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -128,7 +131,7 @@ void main() {
 
         test('should use server filename from content-disposition', () async {
           // Given: A server with content-disposition header
-          setupServer(fileName: 'server-file.bin');
+          await setupServer(fileName: 'server-file.bin');
 
           // When: Downloading without specifying filename
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -145,7 +148,7 @@ void main() {
       group('checksum calculation', () {
         test('should calculate SHA256 checksum', () async {
           // Given: A server with test data
-          setupServer();
+          await setupServer();
 
           // When: Downloading with SHA256 checksum
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -162,7 +165,7 @@ void main() {
 
         test('should calculate MD5 checksum', () async {
           // Given: A server with test data
-          setupServer();
+          await setupServer();
 
           // When: Downloading with MD5 checksum
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -181,7 +184,7 @@ void main() {
       group('resume functionality', () {
         test('should resume partial download', () async {
           // Given: A server and a partial file
-          setupServer();
+          await setupServer();
           final tempFile = File('${tempDir.path}/test.txt.tmp');
           await tempFile.writeAsBytes(testBytes.sublist(0, 20));
 
@@ -201,7 +204,7 @@ void main() {
 
         test('should not resume when resume is false', () async {
           // Given: A server and a partial file with wrong data
-          setupServer();
+          await setupServer();
           final tempFile = File('${tempDir.path}/test.txt.tmp');
           await tempFile.writeAsBytes(utf8.encode('WRONG_DATA'));
 
@@ -220,7 +223,7 @@ void main() {
 
         test('should handle already complete file', () async {
           // Given: A server and a complete temp file
-          setupServer();
+          await setupServer();
           final tempFile = File('${tempDir.path}/test.txt.tmp');
           await tempFile.writeAsBytes(testBytes);
           var checksumCalculated = false;
@@ -247,7 +250,7 @@ void main() {
       group('progress reporting', () {
         test('should report download progress', () async {
           // Given: A server and progress tracking setup
-          setupServer();
+          await setupServer();
           final progressReports = <(int, int, DownloadStatus)>[];
 
           // When: Downloading with progress callback
@@ -284,7 +287,7 @@ void main() {
       group('cancellation', () {
         test('should handle download cancellation', () async {
           // Given: A server with large file and a cancel token
-          setupServer(
+          await setupServer(
             customData: List.filled(1000, 65),
           ); // Large file with 'A's
           final cancelToken = CancelToken();
@@ -318,7 +321,7 @@ void main() {
       group('file conflict handling', () {
         test('should handle file conflict with overwrite strategy', () async {
           // Given: A server and an existing file
-          setupServer();
+          await setupServer();
           final existingFile = File('${tempDir.path}/test.txt');
           await existingFile.writeAsString('OLD_CONTENT');
 
@@ -337,7 +340,7 @@ void main() {
 
         test('should handle file conflict with rename strategy', () async {
           // Given: A server and existing conflicting files
-          setupServer();
+          await setupServer();
           await File('${tempDir.path}/test.txt').writeAsString('OLD1');
           await File('${tempDir.path}/test(1).txt').writeAsString('OLD2');
 
@@ -357,7 +360,7 @@ void main() {
 
         test('should handle file conflict with error strategy', () async {
           // Given: A server and an existing file
-          setupServer();
+          await setupServer();
           await File('${tempDir.path}/test.txt').writeAsString('OLD');
 
           // When: Downloading with error strategy
@@ -390,7 +393,7 @@ void main() {
       group('error handling', () {
         test('should handle corrupted local file', () async {
           // Given: A server and a corrupted local file (larger than remote)
-          setupServer();
+          await setupServer();
           final tempFile = File('${tempDir.path}/test.txt.tmp');
           await tempFile.writeAsBytes(List.filled(1000, 0));
 
@@ -422,7 +425,7 @@ void main() {
 
         test('should sanitize dangerous filenames', () async {
           // Given: A server with dangerous filename in content-disposition
-          setupServer(fileName: '../../../etc/passwd');
+          await setupServer(fileName: '../../../etc/passwd');
 
           // When: Downloading the file
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -442,8 +445,8 @@ void main() {
       group('filename handling', () {
         test('should handle files without extension', () async {
           // Given: A URL without file extension
-          final noExtUrl = Uri.parse('http://localhost:${server.port}/noext');
-          setupServer();
+          final noExtUrl = Uri.parse('http://localhost:${serverHelper.server?.port ?? 0}/noext');
+          await setupServer();
 
           // When: Downloading file without extension
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -471,7 +474,7 @@ void main() {
       group('temp file cleanup', () {
         test('should clean up temp file on error when not resuming', () async {
           // Given: A server that returns error
-          setupServer(statusCode: 500);
+          await setupServer(statusCode: 500);
 
           // When: Download fails without resume
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -492,16 +495,14 @@ void main() {
 
         test('should keep temp file on error when resuming', () async {
           // Given: A partial download and then server failure
-          setupServer();
+          await setupServer();
           final downloader = FileDownloader.fromConfig(RangeRequestConfig());
           final tempFile = File('${tempDir.path}/test.txt.tmp');
           await tempFile.writeAsBytes(testBytes.sublist(0, 10));
 
           // When: Server fails during resume attempt
-          final serverPort = server.port;
-          await server.close(force: true);
-          server = await HttpServer.bind('localhost', serverPort);
-          setupServer(statusCode: 500);
+          await serverHelper.createServer(); // Recreate server to simulate failure
+          await setupServer(statusCode: 500);
 
           try {
             await downloader.downloadToFile(
@@ -640,7 +641,7 @@ void main() {
     group('edge cases', () {
       test('should handle empty file', () async {
         // Given: A server with empty response
-        setupServer(customData: []);
+        await setupServer(customData: []);
 
         // When: Downloading empty file
         final downloader = FileDownloader.fromConfig(RangeRequestConfig());
@@ -654,7 +655,7 @@ void main() {
 
       test('should handle very small chunks', () async {
         // Given: A server and config with 1-byte chunks
-        setupServer();
+        await setupServer();
 
         // When: Downloading with tiny chunk size
         final downloader = FileDownloader.fromConfig(
@@ -669,7 +670,7 @@ void main() {
 
       test('should handle server without range support', () async {
         // Given: A server without range support and partial file
-        setupServer(supportRanges: false);
+        await setupServer(supportRanges: false);
         final tempFile = File('${tempDir.path}/test.txt.tmp');
         await tempFile.writeAsBytes(testBytes.sublist(0, 10));
 
@@ -688,7 +689,7 @@ void main() {
 
       test('should create nested directories', () async {
         // Given: A server and a deeply nested path
-        setupServer();
+        await setupServer();
         final nestedPath = '${tempDir.path}/a/b/c/d';
 
         // When: Downloading to nested directory

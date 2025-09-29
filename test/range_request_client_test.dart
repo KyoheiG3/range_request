@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:range_request/src/cancel_token.dart';
 import 'package:range_request/src/exceptions.dart';
@@ -8,82 +7,37 @@ import 'package:range_request/src/models.dart';
 import 'package:range_request/src/range_request_client.dart';
 import 'package:test/test.dart';
 
+import 'test_helpers.dart';
+
 void main() {
   group('RangeRequestClient', () {
-    late HttpServer server;
+    late TestServerHelper serverHelper;
     late Uri serverUrl;
     const testData = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final testBytes = utf8.encode(testData);
 
     setUp(() async {
-      server = await HttpServer.bind('localhost', 0);
-      serverUrl = Uri.parse('http://localhost:${server.port}/test.txt');
+      serverHelper = TestServerHelper();
+      await serverHelper.createServer();
+      serverUrl = serverHelper.serverUrl;
     });
 
     tearDown(() async {
-      await server.close(force: true);
+      await serverHelper.closeServer();
     });
-
-    void setupServerWithRangeSupport({String? fileName}) {
-      server.listen((request) async {
-        if (request.method == 'HEAD') {
-          request.response.statusCode = 200;
-          request.response.headers.set(
-            'content-length',
-            testBytes.length.toString(),
-          );
-          request.response.headers.set('accept-ranges', 'bytes');
-          if (fileName != null) {
-            request.response.headers.set(
-              'content-disposition',
-              'attachment; filename="$fileName"',
-            );
-          }
-        } else if (request.method == 'GET') {
-          final rangeHeader = request.headers['range']?.first;
-          if (rangeHeader != null && rangeHeader.startsWith('bytes=')) {
-            final rangeParts = rangeHeader.substring(6).split('-');
-            final start = int.parse(rangeParts[0]);
-            final end = rangeParts[1].isEmpty
-                ? testBytes.length - 1
-                : int.parse(rangeParts[1]);
-            request.response.statusCode = 206;
-            request.response.add(testBytes.sublist(start, end + 1));
-          } else {
-            request.response.statusCode = 200;
-            request.response.add(testBytes);
-          }
-        }
-        await request.response.close();
-      });
-    }
-
-    void setupServerWithoutRangeSupport() {
-      server.listen((request) async {
-        if (request.method == 'HEAD') {
-          request.response.statusCode = 200;
-          request.response.headers.set(
-            'content-length',
-            testBytes.length.toString(),
-          );
-          request.response.headers.set('accept-ranges', 'none');
-        } else if (request.method == 'GET') {
-          request.response.statusCode = 200;
-          request.response.add(testBytes);
-        }
-        await request.response.close();
-      });
-    }
 
     group('checkServerInfo', () {
       group('when server supports range requests', () {
         test('should return complete server capabilities', () async {
           // Given: Server with range support and file metadata
-          setupServerWithRangeSupport(fileName: 'test.txt');
+          await serverHelper.setupServerWithRangeSupport(
+            testBytes: testBytes,
+            fileName: 'test.txt',
+          );
 
           // When: Checking server info
           final client = RangeRequestClient();
-          final info = await client.checkServerInfo(serverUrl);
+          final info = await client.checkServerInfo(serverHelper.serverUrl);
 
           // Then: Should return all server capabilities
           expect(info.acceptRanges, isTrue);
@@ -93,7 +47,7 @@ void main() {
 
         test('should parse quoted filename correctly', () async {
           // Given: Server with quoted filename in content-disposition
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set('content-length', '1000');
@@ -115,7 +69,7 @@ void main() {
 
         test('should parse unquoted filename correctly', () async {
           // Given: Server with unquoted filename
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set('content-length', '1000');
@@ -139,7 +93,7 @@ void main() {
       group('when server does not support range requests', () {
         test('should indicate no range support', () async {
           // Given: Server without range support
-          setupServerWithoutRangeSupport();
+          await serverHelper.setupServerWithoutRangeSupport(testBytes: testBytes);
 
           // When: Checking server info
           final client = RangeRequestClient();
@@ -156,7 +110,7 @@ void main() {
         test('should include authorization headers', () async {
           // Given: Server that expects auth header
           var receivedAuth = '';
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             receivedAuth = request.headers['authorization']?.first ?? '';
             request.response.statusCode = 200;
             request.response.headers.set('content-length', '1000');
@@ -178,7 +132,7 @@ void main() {
       group('error handling', () {
         test('should throw on non-200 status', () async {
           // Given: Server returning 404
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             request.response.statusCode = 404;
             await request.response.close();
           });
@@ -201,7 +155,7 @@ void main() {
 
         test('should throw on missing content-length', () async {
           // Given: Server without content-length header
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               // No content-length header
@@ -231,8 +185,8 @@ void main() {
 
         test('should respect connection timeout', () async {
           // Given: Server that never responds
-          server.listen((request) async {
-            await Future.delayed(const Duration(seconds: 10));
+          await serverHelper.setupServer((request) async {
+            await Future.delayed(const Duration(seconds: 1));
           });
 
           // When/Then: Should timeout
@@ -250,8 +204,8 @@ void main() {
 
     group('fetch', () {
       group('when server supports range requests', () {
-        setUp(() {
-          setupServerWithRangeSupport();
+        setUp(() async {
+          await serverHelper.setupServerWithRangeSupport(testBytes: testBytes);
         });
 
         test('should use parallel chunked downloads', () async {
@@ -273,7 +227,7 @@ void main() {
       group('when resuming from specific position', () {
         test('should resume from specified byte position', () async {
           // Given: Resume from byte 10
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set(
@@ -323,8 +277,8 @@ void main() {
       });
 
       group('when server does not support range requests', () {
-        setUp(() {
-          setupServerWithoutRangeSupport();
+        setUp(() async {
+          await serverHelper.setupServerWithoutRangeSupport(testBytes: testBytes);
         });
 
         test('should fall back to serial download', () async {
@@ -346,7 +300,7 @@ void main() {
         test('should retry on failure for serial fetch', () async {
           // Given: Server that fails first 2 attempts
           var requestCount = 0;
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set(
@@ -386,7 +340,7 @@ void main() {
       group('with provided server info', () {
         test('should skip HEAD request when info provided', () async {
           // Given: Server that only handles GET
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             // Should not receive HEAD request
             expect(request.method, equals('GET'));
 
@@ -420,7 +374,7 @@ void main() {
       group('progress tracking', () {
         test('should report progress periodically', () async {
           // Given: Server that sends data in chunks with range support
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set(
@@ -494,7 +448,7 @@ void main() {
 
         test('should report final progress after completion', () async {
           // Given: Standard server
-          setupServerWithRangeSupport();
+          await serverHelper.setupServerWithRangeSupport(testBytes: testBytes);
 
           // When: Fetching with progress tracking
           final client = RangeRequestClient();
@@ -518,17 +472,17 @@ void main() {
       group('cancellation', () {
         test('should handle cancellation during fetch', () async {
           // Given: Slow server response
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set('content-length', '1000');
               request.response.headers.set('accept-ranges', 'bytes');
             } else if (request.method == 'GET') {
               request.response.statusCode = 200;
-              // Send data slowly
-              for (var i = 0; i < 100; i++) {
-                request.response.add([i]);
-                await Future.delayed(const Duration(milliseconds: 50));
+              // Send data in chunks with delays (reduced for faster tests)
+              for (var i = 0; i < 10; i++) {
+                request.response.add(List.generate(10, (j) => i * 10 + j));
+                await Future.delayed(const Duration(milliseconds: 20));
               }
             }
             await request.response.close();
@@ -539,7 +493,7 @@ void main() {
           final cancelToken = CancelToken();
 
           // Cancel after a short delay
-          Timer(const Duration(milliseconds: 100), () {
+          Timer(const Duration(milliseconds: 50), () {
             cancelToken.cancel();
           });
 
@@ -594,7 +548,7 @@ void main() {
         test('should include headers in all requests', () async {
           // Given: Server that checks headers
           var receivedUserAgent = '';
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'GET') {
               receivedUserAgent = request.headers['user-agent']?.first ?? '';
               request.response.statusCode = 200;
@@ -627,7 +581,7 @@ void main() {
       group('error handling', () {
         test('should fail after max retries for serial fetch', () async {
           // Given: Server that always fails
-          server.listen((request) async {
+          await serverHelper.setupServer((request) async {
             if (request.method == 'HEAD') {
               request.response.statusCode = 200;
               request.response.headers.set('content-length', '1000');
