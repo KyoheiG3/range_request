@@ -17,7 +17,7 @@ class ChunkFetcher {
   final Map<int, List<int>> pendingChunks = {};
   final void Function(int)? onProgress;
   final int startOffset;
-  final CancelToken? cancelToken;
+  final CancelToken cancelToken;
 
   int nextChunkIndex = 0;
   int nextWriteIndex = 0;
@@ -27,7 +27,7 @@ class ChunkFetcher {
     required this.contentLength,
     required this.config,
     this.startOffset = 0,
-    this.cancelToken,
+    required this.cancelToken,
     this.onProgress,
   }) : ranges = _calculateRanges(contentLength, config.chunkSize, startOffset);
 
@@ -37,13 +37,13 @@ class ChunkFetcher {
   Future<void> startInitialFetches() async {
     while (activeTasks.length < config.maxConcurrentRequests &&
         nextChunkIndex < ranges.length) {
-      cancelToken?.throwIfCancelled();
+      cancelToken.throwIfCancelled();
       nextChunkIndex = _queueFetch(nextChunkIndex);
     }
   }
 
   Future<void> processNextCompletion() async {
-    cancelToken?.throwIfCancelled();
+    cancelToken.throwIfCancelled();
 
     // Wait for any download to complete
     final completed = await Future.any(
@@ -62,7 +62,7 @@ class ChunkFetcher {
 
     // Queue next fetch if available
     if (nextChunkIndex < ranges.length &&
-        !(cancelToken?.isCancelled ?? false)) {
+        !cancelToken.isCancelled) {
       nextChunkIndex = _queueFetch(nextChunkIndex);
     }
   }
@@ -89,7 +89,7 @@ class ChunkFetcher {
     );
 
     while (retryHandler.shouldRetry) {
-      cancelToken?.throwIfCancelled();
+      cancelToken.throwIfCancelled();
 
       try {
         final response = await http

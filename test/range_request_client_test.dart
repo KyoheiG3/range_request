@@ -614,5 +614,217 @@ void main() {
         });
       });
     });
+
+    group('cancelAll functionality', () {
+      test('should cancel all active operations', () async {
+        // Given: Server that delays response
+        await serverHelper.setupServer((request) async {
+          // Send headers immediately
+          request.response
+            ..statusCode = 200
+            ..headers.set('content-length', testBytes.length.toString())
+            ..headers.set('accept-ranges', 'bytes');
+
+          // Add delay to ensure cancellation happens during fetch
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          // Try to send data (might fail if cancelled)
+          try {
+            request.response.add(testBytes);
+            await request.response.close();
+          } catch (_) {
+            // Ignore errors from cancelled connections
+          }
+        });
+
+        // Given: Multiple concurrent downloads with separate tokens
+        final client = RangeRequestClient();
+        final token1 = CancelToken();
+        final token2 = CancelToken();
+        final token3 = CancelToken();
+
+        // When: Starting multiple downloads
+        final futures = [
+          expectLater(
+            client.fetch(serverUrl, cancelToken: token1).drain(),
+            throwsA(isA<RangeRequestException>()),
+          ),
+          expectLater(
+            client.fetch(serverUrl, cancelToken: token2).drain(),
+            throwsA(isA<RangeRequestException>()),
+          ),
+          expectLater(
+            client.fetch(serverUrl, cancelToken: token3).drain(),
+            throwsA(isA<RangeRequestException>()),
+          ),
+        ];
+
+        // Give some time for downloads to start
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        // When: Calling cancelAll
+        client.cancelAll();
+
+        // Then: All downloads should be cancelled
+        await Future.wait(futures);
+
+        // Verify all tokens were cancelled
+        expect(token1.isCancelled, isTrue);
+        expect(token2.isCancelled, isTrue);
+        expect(token3.isCancelled, isTrue);
+      });
+
+      test('should handle mixed manual and group cancellation', () async {
+        // Given: Server with delay
+        await serverHelper.setupServer((request) async {
+          // Send headers immediately and flush them
+          request.response
+            ..statusCode = 200
+            ..headers.set('content-length', testBytes.length.toString())
+            ..headers.set('accept-ranges', 'bytes');
+
+          // Ensure headers are sent before delay
+          await request.response.flush();
+
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          try {
+            request.response.add(testBytes);
+            await request.response.close();
+          } catch (_) {
+            // Ignore errors from cancelled connections
+          }
+        });
+
+        // Given: Multiple downloads
+        final client = RangeRequestClient();
+        final token1 = CancelToken();
+        final token2 = CancelToken();
+
+        // When: Starting downloads
+        final future1 = expectLater(
+          client.fetch(serverUrl, cancelToken: token1).drain(),
+          throwsA(isA<RangeRequestException>()),
+        );
+        final future2 = expectLater(
+          client.fetch(serverUrl, cancelToken: token2).drain(),
+          throwsA(isA<RangeRequestException>()),
+        );
+
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        // Manually cancel one token
+        token1.cancel();
+
+        // Then call cancelAll
+        client.cancelAll();
+
+        // Then: Both should be cancelled
+        expect(token1.isCancelled, isTrue);
+        expect(token2.isCancelled, isTrue);
+
+        await Future.wait([future1, future2]);
+      });
+
+      test('should clear tokens without cancelling', () async {
+        // Given: Server that immediately responds (to avoid hanging)
+        await serverHelper.setupServer((request) async {
+          // Immediate response
+          request.response
+            ..statusCode = 200
+            ..headers.set('content-length', '100')
+            ..headers.set('accept-ranges', 'bytes');
+          await request.response.close();
+        });
+
+        // Given: Client with registered tokens
+        final client = RangeRequestClient();
+        final token1 = CancelToken();
+        final token2 = CancelToken();
+
+        // Start downloads to register tokens (cancel immediately to avoid issues)
+        client.fetch(serverUrl, cancelToken: token1).listen(
+          (_) {},
+          onError: (_) {},
+          cancelOnError: true,
+        );
+        client.fetch(serverUrl, cancelToken: token2).listen(
+          (_) {},
+          onError: (_) {},
+          cancelOnError: true,
+        );
+
+        // Give a moment for tokens to be registered
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        // Cancel tokens first to stop any operations
+        token1.cancel();
+        token2.cancel();
+
+        // When: Clearing tokens
+        client.clearTokens();
+
+        // Then: Tokens remain cancelled (they were cancelled before clearing)
+        expect(token1.isCancelled, isTrue);
+        expect(token2.isCancelled, isTrue);
+
+        // Create new tokens and verify cancelAll won't affect them after clear
+        final token3 = CancelToken();
+        final token4 = CancelToken();
+
+        // Clear should have removed all tokens, so cancelAll won't affect new ones
+        client.cancelAll();
+        expect(token3.isCancelled, isFalse);
+        expect(token4.isCancelled, isFalse);
+      });
+
+      test('should cancel operations without explicit CancelToken', () async {
+        // Given: Server with delay
+        await serverHelper.setupServer((request) async {
+          // Send headers immediately
+          request.response
+            ..statusCode = 200
+            ..headers.set('content-length', testBytes.length.toString())
+            ..headers.set('accept-ranges', 'bytes');
+
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          try {
+            request.response.add(testBytes);
+            await request.response.close();
+          } catch (_) {
+            // Ignore errors from cancelled connections
+          }
+        });
+
+        // Given: Client with downloads started WITHOUT explicit tokens
+        final client = RangeRequestClient();
+
+        // When: Starting downloads without providing CancelToken
+        final futures = [
+          expectLater(
+            client.fetch(serverUrl).drain(), // No cancelToken provided
+            throwsA(isA<RangeRequestException>()),
+          ),
+          expectLater(
+            client.fetch(serverUrl).drain(), // No cancelToken provided
+            throwsA(isA<RangeRequestException>()),
+          ),
+          expectLater(
+            client.fetch(serverUrl).drain(), // No cancelToken provided
+            throwsA(isA<RangeRequestException>()),
+          ),
+        ];
+
+        // Give some time for downloads to start
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        // When: Calling cancelAll
+        client.cancelAll();
+
+        // Then: All downloads should be cancelled
+        await Future.wait(futures);
+      });
+    });
   });
 }

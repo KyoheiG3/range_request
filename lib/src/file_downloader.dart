@@ -12,7 +12,8 @@ import 'range_request_client.dart';
 class FileDownloader {
   final RangeRequestClient client;
 
-  const FileDownloader([this.client = const RangeRequestClient()]);
+  FileDownloader([RangeRequestClient? client])
+      : client = client ?? RangeRequestClient();
 
   /// Create a FileDownloader with a new RangeRequestClient using the provided config
   factory FileDownloader.fromConfig(RangeRequestConfig config) {
