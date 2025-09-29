@@ -156,6 +156,34 @@ try {
 }
 ```
 
+### Managing Multiple Downloads
+
+You can manage multiple downloads through the `FileDownloader`'s client instance:
+
+```dart
+final downloader = FileDownloader();
+
+// Start multiple downloads
+final download1 = downloader.downloadToFile(url1, '/downloads');
+final download2 = downloader.downloadToFile(url2, '/downloads');
+final download3 = downloader.downloadToFile(url3, '/downloads');
+
+// Cancel all active downloads through the downloader's client
+downloader.client.cancelAll();
+
+// Or cancel and clear all tokens for a fresh start
+downloader.client.cancelAndClear();
+
+// Individual downloads can still use their own CancelToken
+final token = CancelToken();
+final download4 = downloader.downloadToFile(
+  url4,
+  '/downloads',
+  cancelToken: token,
+);
+token.cancel(); // Cancel individual download
+```
+
 ### Configuration Options
 
 ```dart
@@ -206,6 +234,9 @@ print('Cleaned up $deletedCount temporary files');
 
   - `fetch()`: Stream download with optional progress callback
   - `checkServerInfo()`: Check if server supports range requests
+  - `cancelAll()`: Cancel all active operations
+  - `clearTokens()`: Clear all tokens without cancelling
+  - `cancelAndClear()`: Cancel all operations and clear tokens
 
 - **`FileDownloader`**: High-level file download operations
 
