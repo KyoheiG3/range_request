@@ -513,6 +513,89 @@ void main() {
         // The download already completed, so cancelAll doesn't affect it
         expect(chunks.isNotEmpty, isTrue);
       });
+
+      test('cancelAndClear should cancel and remove all tokens', () async {
+        // Given: Client with slow downloads
+        mockHttp.registerHeadResponse(
+          testUrl.toString(),
+          contentLength: testBytes.length,
+          acceptRanges: true,
+        );
+        mockHttp.registerRangeResponse(
+          testUrl.toString(),
+          testBytes,
+          delay: const Duration(milliseconds: 200),
+        );
+
+        final client = RangeRequestClient(
+          config: const RangeRequestConfig(chunkSize: 10),
+          http: mockHttp,
+        );
+
+        // When: Starting downloads with explicit tokens
+        final token1 = CancelToken();
+        final token2 = CancelToken();
+
+        final download1Future = client.fetch(testUrl, cancelToken: token1).toList();
+        final download2Future = client.fetch(testUrl, cancelToken: token2).toList();
+
+        // Cancel and clear after a short delay (before downloads complete)
+        await Future.delayed(const Duration(milliseconds: 50));
+        client.cancelAndClear();
+
+        // Then: All downloads should be cancelled
+        await expectLater(
+          download1Future,
+          throwsA(
+            isA<RangeRequestException>().having(
+              (e) => e.code,
+              'code',
+              RangeRequestErrorCode.cancelled,
+            ),
+          ),
+        );
+        await expectLater(
+          download2Future,
+          throwsA(
+            isA<RangeRequestException>().having(
+              (e) => e.code,
+              'code',
+              RangeRequestErrorCode.cancelled,
+            ),
+          ),
+        );
+
+        // Verify tokens were cancelled
+        expect(token1.isCancelled, isTrue);
+        expect(token2.isCancelled, isTrue);
+
+        // When: Starting new downloads after cancelAndClear
+        final token3 = CancelToken();
+        final token4 = CancelToken();
+
+        // Start new downloads
+        final download3Future = client.fetch(testUrl, cancelToken: token3).toList();
+        final download4Future = client.fetch(testUrl, cancelToken: token4).toList();
+
+        // Give them a moment to register
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        // When: Calling cancelAll after cancelAndClear
+        client.cancelAll();
+
+        // Then: New tokens should be cancelled (they were registered after clear)
+        expect(token3.isCancelled, isTrue);
+        expect(token4.isCancelled, isTrue);
+
+        await expectLater(
+          download3Future,
+          throwsA(isA<RangeRequestException>()),
+        );
+        await expectLater(
+          download4Future,
+          throwsA(isA<RangeRequestException>()),
+        );
+      });
     });
   });
 }
