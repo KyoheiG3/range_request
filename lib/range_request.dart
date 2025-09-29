@@ -1,4 +1,5 @@
 export 'src/cancel_token.dart';
+export 'src/cancel_token_group.dart';
 export 'src/exceptions.dart';
 export 'src/file_downloader.dart';
 export 'src/models.dart';
